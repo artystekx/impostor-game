@@ -63,7 +63,7 @@ class Game {
     this.rounds = parseInt(rounds);
     this.roundTime = parseInt(roundTime);
     this.numImpostors = parseInt(numImpostors) || 1;
-    this.gameMode = gameMode || 'simultaneous'; // 'simultaneous' lub 'sequential'
+    this.gameMode = gameMode || 'simultaneous';
     this.players = new Map();
     this.currentRound = 0;
     this.isPlaying = false;
@@ -74,18 +74,18 @@ class Game {
     this.votes = new Map();
     this.voteResults = new Map();
     this.decisions = new Map();
-    this.guesses = new Map(); // Nowe: zgadywanie hasła przez impostorów
+    this.guesses = new Map();
     this.roundStartTime = null;
     this.timer = null;
-    this.currentTurnIndex = 0; // Dla trybu sequential
-    this.turnOrder = []; // Dla trybu sequential
+    this.currentTurnIndex = 0;
+    this.turnOrder = [];
     this.turnTimer = null;
     
     // Losuj pierwsze hasło
     this.currentWordPair = this.getRandomWordPair();
     this.word = this.currentWordPair.word;
     this.hint = this.currentWordPair.hint;
-    this.wordGuessed = false; // Czy impostor odgadł hasło
+    this.wordGuessed = false;
   }
 
   getRandomWordPair() {
@@ -97,7 +97,6 @@ class Game {
     this.players.set(playerId, {
       id: playerId,
       name: name,
-      score: 0,
       isImpostor: false,
       isHost: playerId === this.hostId,
       hasSubmitted: false,
@@ -105,17 +104,8 @@ class Game {
       hasDecided: false,
       hasGuessed: false,
       guess: '',
-      turnCompleted: false // Dla trybu sequential
+      turnCompleted: false
     });
-    
-    // Tymczasowo ustaw impostora (będzie zmienione przy starcie gry)
-    if (this.players.size === 2 && !this.isPlaying && this.numImpostors > 0) {
-      const nonHostPlayers = Array.from(this.players.values()).filter(p => !p.isHost);
-      if (nonHostPlayers.length > 0) {
-        this.impostorIds = [nonHostPlayers[0].id];
-        this.players.get(nonHostPlayers[0].id).isImpostor = true;
-      }
-    }
     
     return this.players.get(playerId);
   }
@@ -126,17 +116,6 @@ class Game {
     
     // Usuń z listy impostorów jeśli był impostorem
     this.impostorIds = this.impostorIds.filter(id => id !== playerId);
-    
-    // Jeśli impostor wyszedł i mamy za mało impostorów, dodaj nowego
-    if (wasImpostor && this.players.size > this.numImpostors && this.isPlaying) {
-      const nonHostPlayers = Array.from(this.players.values())
-        .filter(p => !p.isHost && !this.impostorIds.includes(p.id));
-      if (nonHostPlayers.length > 0) {
-        const newImpostor = nonHostPlayers[0];
-        this.impostorIds.push(newImpostor.id);
-        this.players.get(newImpostor.id).isImpostor = true;
-      }
-    }
     
     if (playerId === this.hostId) {
       return true;
@@ -218,7 +197,7 @@ class Game {
     
     // Sprawdź czy wszyscy skończyli
     if (this.currentTurnIndex >= this.turnOrder.length) {
-      return false; // Koniec tury
+      return false;
     }
     
     return this.getCurrentTurnPlayerId();
@@ -233,14 +212,12 @@ class Game {
     this.associations.set(playerId, association);
     
     if (this.gameMode === 'sequential') {
-      // W trybie sequential sprawdzamy czy wszyscy skończyli
       const allCompleted = Array.from(this.players.values())
         .filter(p => !p.isHost)
         .every(p => p.turnCompleted);
       
       return allCompleted;
     } else {
-      // W trybie simultaneous sprawdzamy czy wszyscy wysłali
       const allSubmitted = Array.from(this.players.values())
         .filter(p => !p.isHost)
         .every(p => p.hasSubmitted);
@@ -257,7 +234,6 @@ class Game {
     player.guess = guess;
     this.guesses.set(playerId, guess);
     
-    // Sprawdź czy impostor odgadł hasło
     const guessedCorrectly = guess.trim().toLowerCase() === this.word.toLowerCase();
     
     if (guessedCorrectly) {
@@ -369,34 +345,8 @@ class Game {
     
     this.voteResults = voteCounts;
     
-    // Sprawdź ilu impostorów zostało wykrytych
-    let impostorsDetected = 0;
-    for (const votedOutId of votedOutIds) {
-      if (this.impostorIds.includes(votedOutId)) {
-        impostorsDetected++;
-      }
-    }
-    
-    // Aktualizuj wyniki
-    if (impostorsDetected > 0) {
-      // Gracze wygrywają - dostają punkty za każdego wykrytego impostora
-      for (const player of this.players.values()) {
-        if (!player.isImpostor && !player.isHost) {
-          player.score += 10 * impostorsDetected;
-        }
-      }
-    } else if (votedOutIds.length > 0) {
-      // Impostorzy wygrywają - dostają punkty za każdego niewykrytego impostora
-      for (const impostorId of this.impostorIds) {
-        if (this.players.has(impostorId)) {
-          this.players.get(impostorId).score += 20;
-        }
-      }
-    }
-    
     return {
       votedOutIds,
-      impostorsDetected,
       voteCounts: Array.from(voteCounts.entries())
     };
   }
@@ -422,12 +372,10 @@ class Game {
     this.decisions.clear();
     this.guesses.clear();
     
-    // Przygotuj kolejkę dla trybu sequential
     if (this.gameMode === 'sequential') {
       this.prepareTurnOrder();
     }
     
-    // Losuj nowe hasło tylko jeśli nie wybrano zachowania tego samego
     if (!keepSameWord) {
       this.currentWordPair = this.getRandomWordPair();
       this.word = this.currentWordPair.word;
@@ -465,7 +413,6 @@ class Game {
       players: Array.from(this.players.values()).map(p => ({
         id: p.id,
         name: p.name,
-        score: p.score,
         isImpostor: p.isImpostor && this.isPlaying,
         isHost: p.isHost,
         hasSubmitted: p.hasSubmitted,
@@ -499,7 +446,6 @@ class Game {
         state.player = {
           id: player.id,
           name: player.name,
-          score: player.score,
           isImpostor: player.isImpostor,
           isHost: player.isHost
         };
@@ -609,7 +555,6 @@ io.on('connection', (socket) => {
     
     if (!game.isPlaying || game.isVoting || game.isDeciding) return;
     
-    // Sprawdź czy w trybie sequential to jest kolej gracza
     if (game.gameMode === 'sequential') {
       const currentTurnPlayerId = game.getCurrentTurnPlayerId();
       if (currentTurnPlayerId !== socket.id) {
@@ -625,17 +570,14 @@ io.on('connection', (socket) => {
       gameState: game.getGameState()
     });
     
-    // W trybie sequential przejdź do następnego gracza
     if (game.gameMode === 'sequential') {
       const nextPlayerId = game.nextTurn();
       if (nextPlayerId) {
-        // Jest następny gracz
         io.to(gameCode).emit('nextTurn', {
           nextPlayerId: nextPlayerId,
           gameState: game.getGameState()
         });
       } else {
-        // Wszyscy skończyli - przejdź do fazy decyzji
         setTimeout(() => {
           game.startDecisionPhase();
           io.to(gameCode).emit('decisionPhaseStarted', {
@@ -644,7 +586,6 @@ io.on('connection', (socket) => {
         }, 1000);
       }
     } else if (allSubmitted) {
-      // W trybie simultaneous wszyscy wysłali - przejdź do fazy decyzji
       setTimeout(() => {
         game.startDecisionPhase();
         io.to(gameCode).emit('decisionPhaseStarted', {
@@ -666,15 +607,7 @@ io.on('connection', (socket) => {
     const result = game.submitGuess(socket.id, guess);
     
     if (result.correct) {
-      // Impostor odgadł hasło - kończy grę
       game.wordGuessed = true;
-      
-      // Przyznaj punkty impostorom
-      for (const impostorId of game.impostorIds) {
-        if (game.players.has(impostorId)) {
-          game.players.get(impostorId).score += 30;
-        }
-      }
       
       io.to(gameCode).emit('wordGuessed', {
         guesserId: result.guesserId,
@@ -683,7 +616,6 @@ io.on('connection', (socket) => {
         gameState: game.getGameState()
       });
       
-      // Jeśli to tryb sequential, gra kończy się natychmiast
       if (game.gameMode === 'sequential') {
         setTimeout(() => {
           io.to(gameCode).emit('gameEnded', {
@@ -693,7 +625,6 @@ io.on('connection', (socket) => {
         }, 3000);
       }
     } else {
-      // Nieprawidłowe zgadywanie
       socket.emit('guessResult', { correct: false });
     }
   });
@@ -717,14 +648,12 @@ io.on('connection', (socket) => {
     if (decisionResult) {
       setTimeout(() => {
         if (decisionResult.majorityWantsVote) {
-          // Większość chce głosować - przejdź do głosowania
           game.startVoting();
           io.to(gameCode).emit('votingStarted', {
             decisionResult,
             gameState: game.getGameState()
           });
         } else {
-          // Większość chce grać dalej - następna runda
           game.nextRound(keepSameWord);
           io.to(gameCode).emit('nextRoundStarted', {
             decisionResult,
@@ -804,7 +733,6 @@ io.on('connection', (socket) => {
     game.wordGuessed = false;
     
     for (const player of game.players.values()) {
-      player.score = 0;
       player.isImpostor = false;
       player.hasSubmitted = false;
       player.association = '';
