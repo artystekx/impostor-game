@@ -177,26 +177,6 @@ function initSocket() {
         startVoting();
     });
     
-    socket.on('waitingForHostDecision', (data) => {
-        gameState = data.gameState;
-        if (isHost) {
-            showHostDecisionPhase();
-        } else {
-            showNotification('Czekamy na decyzję hosta...', 'info');
-        }
-    });
-    
-    socket.on('voteSubmitted', (data) => {
-        gameState = data.gameState;
-        updateGamePlayersList();
-        updateVoteProgress();
-    });
-    
-    socket.on('voteResults', (data) => {
-        gameState = data.gameState;
-        showVoteResults(data.results);
-    });
-    
     socket.on('nextRoundStarted', (data) => {
         gameState = data.gameState;
         startNextRound();
@@ -214,13 +194,13 @@ function initSocket() {
     
     socket.on('gameEnded', (data) => {
         gameState = data.gameState;
-        if (data.reason === 'wordGuessed' || data.reason === 'guessFailed') {
-            setTimeout(() => {
+        setTimeout(() => {
+            if (data.reason === 'wordGuessed' || data.reason === 'guessFailed') {
                 showFinalResults(data.reason);
-            }, 3000);
-        } else {
-            showFinalResults('normal');
-        }
+            } else {
+                showFinalResults('normal');
+            }
+        }, 1000);
     });
     
     socket.on('gameRestarted', (data) => {
@@ -446,14 +426,21 @@ function updateGameInterface() {
         showDecisionPhase();
     } else if (gameState.isVoting) {
         startVoting();
-    } else if (!gameState.isPlaying) {
+    } else if (!gameState.isPlaying || gameState.gameEnded) {
         document.getElementById('association-section').style.display = 'none';
-        document.getElementById('waiting-section').style.display = 'block';
+        document.getElementById('waiting-section').style.display = 'none';
         document.getElementById('voting-section').style.display = 'none';
         document.getElementById('results-section').style.display = 'none';
         document.getElementById('decision-section').style.display = 'none';
         document.getElementById('turn-section').style.display = 'none';
         document.getElementById('word-guessed-section').style.display = 'none';
+        
+        // Gra się skończyła, przejdź do wyników
+        if (gameState.gameEnded) {
+            setTimeout(() => {
+                showFinalResults('normal');
+            }, 1000);
+        }
     } else if (gameState.gameMode === 'simultaneous') {
         document.getElementById('association-section').style.display = 'block';
         document.getElementById('waiting-section').style.display = 'none';
@@ -480,7 +467,7 @@ function updateGameInterface() {
         startTimer();
     }
     
-    if (isHost && gameState.isPlaying) {
+    if (isHost && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed) {
         document.getElementById('host-controls').style.display = 'flex';
     } else {
         document.getElementById('host-controls').style.display = 'none';
@@ -574,27 +561,8 @@ function showDecisionPhase() {
     document.getElementById('vote-impostor-btn').disabled = false;
     document.getElementById('continue-game-btn').disabled = false;
     
-    // Ukryj opcję zachowania hasła dla nie-hostów
-    if (!isHost) {
-        document.getElementById('keep-word-option').style.display = 'none';
-    }
-}
-
-function showHostDecisionPhase() {
-    document.getElementById('association-section').style.display = 'none';
-    document.getElementById('waiting-section').style.display = 'none';
-    document.getElementById('voting-section').style.display = 'none';
-    document.getElementById('results-section').style.display = 'none';
-    document.getElementById('turn-section').style.display = 'none';
-    document.getElementById('word-guessed-section').style.display = 'none';
-    document.getElementById('decision-section').style.display = 'block';
-    
-    displayAssociationsWithNames();
-    
-    document.getElementById('decision-status').textContent = 'Jesteś hostem! Zdecyduj czy zachować to samo hasło:';
-    document.getElementById('vote-impostor-btn').style.display = 'none';
-    document.getElementById('continue-game-btn').style.display = 'none';
-    document.getElementById('keep-word-option').style.display = 'block';
+    // Ukryj opcję zachowania hasła (teraz zawsze to samo hasło)
+    document.getElementById('keep-word-option').style.display = 'none';
 }
 
 function displayAssociationsWithNames() {
@@ -689,7 +657,7 @@ function loadVoteOptions() {
     if (!gameState || !gameState.players) return;
     
     gameState.players.forEach(player => {
-        if (player.id !== socket.id) { // Można głosować na każdego oprócz siebie
+        if (player.id !== socket.id) {
             const voteBtn = document.createElement('button');
             voteBtn.className = 'vote-btn';
             voteBtn.textContent = player.name;
@@ -939,7 +907,7 @@ function showFinalResults(reason) {
         </div>
         
         <p style="margin-top: 30px; color: #b0b0d0; font-style: italic;">
-            Dziękujemy za grę! Czy chcesz zagrać ponownie?
+            Dziękujemy za grę!
         </p>
     </div>`;
     
@@ -1009,7 +977,6 @@ document.addEventListener('DOMContentLoaded', () => {
         switchScreen('start');
     });
     
-    // Ekran oczekiwania (host)
     document.getElementById('copy-code-btn').addEventListener('click', () => {
         copyToClipboard(gameCode);
     });
@@ -1043,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('association-input').value = '';
     });
     
-    // Zgadywanie hasła (tryb sequential)
+    // Zgadywanie hasła (dla impostora)
     document.getElementById('submit-guess-btn').addEventListener('click', () => {
         const guess = document.getElementById('guess-input').value.trim();
         
@@ -1057,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('guessed-message').style.display = 'flex';
     });
     
-    // Nowe przyciski decyzji
+    // Przyciski decyzji
     document.getElementById('vote-impostor-btn').addEventListener('click', () => {
         socket.emit('submitDecision', { decision: true });
         document.getElementById('decision-status').textContent = 'Wybrałeś: Głosuj na impostora';
@@ -1070,15 +1037,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('decision-status').textContent = 'Wybrałeś: Graj dalej';
         document.getElementById('vote-impostor-btn').disabled = true;
         document.getElementById('continue-game-btn').disabled = true;
-    });
-    
-    // Przyciski hosta do decyzji o haśle
-    document.getElementById('keep-word-btn').addEventListener('click', () => {
-        socket.emit('hostDecision', { keepSameWord: true });
-    });
-    
-    document.getElementById('new-word-btn').addEventListener('click', () => {
-        socket.emit('hostDecision', { keepSameWord: false });
     });
     
     document.getElementById('next-round-btn').addEventListener('click', () => {
