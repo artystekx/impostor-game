@@ -9,502 +9,434 @@
 </head>
 <body>
     <div class="container">
-        <!-- Ekran logowania/rejestracji -->
-        <div id="auth-screen" class="screen active">
+        <header>
+            <h1><i class="fas fa-user-secret"></i> Gra Impostor</h1>
+            <p class="subtitle">Wszyscy dostają hasło, impostor tylko podpowiedź. Znajdź oszusta po skojarzeniach!</p>
+        </header>
+        
+        <!-- Ekran startowy -->
+        <div id="start-screen" class="screen active">
             <div class="panel">
                 <div class="logo">
                     <i class="fas fa-user-secret"></i>
                 </div>
-                <h2>Impostor Game 2.0</h2>
-                <p class="subtitle">Zaloguj się lub zarejestruj, aby grać!</p>
+                <h2>Witaj w grze Impostor 2.0!</h2>
+                <p>Nowe funkcje: wybierz liczbę impostorów, tryb gry, głosuj czy zachować hasło i zgaduj hasło jako impostor!</p>
                 
-                <div id="login-section">
-                    <h3><i class="fas fa-sign-in-alt"></i> Logowanie</h3>
-                    <div class="input-group">
-                        <label for="login-username">
-                            <i class="fas fa-user"></i> Nazwa użytkownika:
-                        </label>
-                        <input type="text" id="login-username" placeholder="Twój login">
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="login-password">
-                            <i class="fas fa-lock"></i> Hasło:
-                        </label>
-                        <input type="password" id="login-password" placeholder="Twoje hasło">
-                    </div>
-                    
-                    <div class="button-group">
-                        <button id="login-btn" class="btn btn-primary">
-                            <i class="fas fa-sign-in-alt"></i> Zaloguj się
-                        </button>
-                        <button id="show-register-btn" class="btn btn-secondary">
-                            <i class="fas fa-user-plus"></i> Rejestracja
-                        </button>
-                        <button id="guest-play-btn" class="btn btn-secondary">
-                            <i class="fas fa-play"></i> Graj jako gość
-                        </button>
-                    </div>
+                <div class="button-group">
+                    <button id="create-game-btn" class="btn btn-primary">
+                        <i class="fas fa-plus-circle"></i> Stwórz nową grę
+                    </button>
+                    <button id="join-game-btn" class="btn btn-secondary">
+                        <i class="fas fa-sign-in-alt"></i> Dołącz do gry
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran tworzenia gry -->
+        <div id="create-screen" class="screen">
+            <div class="panel">
+                <h2><i class="fas fa-cogs"></i> Tworzenie nowej gry</h2>
+                <p>Skonfiguruj ustawienia gry. Hasło będzie losowane automatycznie.</p>
+                
+                <div class="input-group">
+                    <label for="player-name-host">
+                        <i class="fas fa-user"></i> Twój pseudonim:
+                    </label>
+                    <input type="text" id="player-name-host" placeholder="np. Marek" value="Host">
                 </div>
                 
-                <div id="register-section" style="display: none;">
-                    <h3><i class="fas fa-user-plus"></i> Rejestracja</h3>
+                <div class="form-row">
                     <div class="input-group">
-                        <label for="register-username">
-                            <i class="fas fa-user"></i> Nazwa użytkownika:
+                        <label for="rounds-count">
+                            <i class="fas fa-redo"></i> Liczba rund:
                         </label>
-                        <input type="text" id="register-username" placeholder="Wybierz login">
-                        <small>Min. 3 znaki, maks. 20 znaków</small>
+                        <select id="rounds-count">
+                            <option value="3">3 rundy</option>
+                            <option value="4" selected>4 rundy</option>
+                            <option value="5">5 rundy</option>
+                            <option value="6">6 rund</option>
+                        </select>
                     </div>
                     
                     <div class="input-group">
-                        <label for="register-email">
-                            <i class="fas fa-envelope"></i> E-mail (opcjonalnie):
+                        <label for="round-time">
+                            <i class="fas fa-clock"></i> Czas na rundę:
                         </label>
-                        <input type="email" id="register-email" placeholder="twój@email.pl">
+                        <select id="round-time">
+                            <option value="30">30 sekund</option>
+                            <option value="45" selected>45 sekund</option>
+                            <option value="60">60 sekund</option>
+                            <option value="90">90 sekund</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="num-impostors">
+                            <i class="fas fa-user-secret"></i> Liczba impostorów:
+                        </label>
+                        <select id="num-impostors">
+                            <option value="1">1 impostor</option>
+                            <option value="2">2 impostorów</option>
+                            <option value="3">3 impostorów</option>
+                        </select>
                     </div>
                     
                     <div class="input-group">
-                        <label for="register-password">
-                            <i class="fas fa-lock"></i> Hasło:
+                        <label for="game-mode">
+                            <i class="fas fa-gamepad"></i> Tryb gry:
                         </label>
-                        <input type="password" id="register-password" placeholder="Wymyśl hasło">
-                        <small>Min. 4 znaki (hasła nie są szyfrowane)</small>
+                        <select id="game-mode">
+                            <option value="simultaneous">Wszyscy jednocześnie</option>
+                            <option value="sequential">Kolejka (po kolei)</option>
+                        </select>
                     </div>
-                    
-                    <div class="input-group">
-                        <label for="register-password-confirm">
-                            <i class="fas fa-lock"></i> Potwierdź hasło:
-                        </label>
-                        <input type="password" id="register-password-confirm" placeholder="Powtórz hasło">
-                    </div>
-                    
-                    <div class="button-group">
-                        <button id="register-btn" class="btn btn-success">
-                            <i class="fas fa-check"></i> Zarejestruj się
-                        </button>
-                        <button id="show-login-btn" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Wróć do logowania
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Ekran głównego menu (po zalogowaniu) -->
-        <div id="main-menu-screen" class="screen">
-            <div class="panel">
-                <div class="user-header">
-                    <div class="user-info">
-                        <h2>Witaj, <span id="welcome-username">Graczu</span>!</h2>
-                        <div class="user-stats">
-                            <span class="stat-badge"><i class="fas fa-trophy"></i> Poziom: <span id="user-level">1</span></span>
-                            <span class="stat-badge"><i class="fas fa-star"></i> Punkty: <span id="user-score">0</span></span>
-                            <span class="stat-badge"><i class="fas fa-users"></i> Znajomi: <span id="user-friends">0</span></span>
-                        </div>
-                    </div>
-                    <div class="user-actions">
-                        <button id="profile-btn" class="btn btn-secondary btn-small">
-                            <i class="fas fa-user"></i> Profil
-                        </button>
-                        <button id="logout-btn" class="btn btn-danger btn-small">
-                            <i class="fas fa-sign-out-alt"></i> Wyloguj
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="main-options">
-                    <div class="option-card" id="quick-play-card">
-                        <div class="option-icon">
-                            <i class="fas fa-bolt"></i>
-                        </div>
-                        <h3>Szybka gra</h3>
-                        <p>Dołącz do losowej gry</p>
-                        <button id="quick-play-btn" class="btn btn-primary">
-                            <i class="fas fa-play"></i> Graj
-                        </button>
-                    </div>
-                    
-                    <div class="option-card" id="create-game-card">
-                        <div class="option-icon">
-                            <i class="fas fa-plus-circle"></i>
-                        </div>
-                        <h3>Stwórz grę</h3>
-                        <p>Utwórz własną grę z ustawieniami</p>
-                        <button id="create-game-menu-btn" class="btn btn-primary">
-                            <i class="fas fa-gamepad"></i> Stwórz
-                        </button>
-                    </div>
-                    
-                    <div class="option-card" id="join-game-card">
-                        <div class="option-icon">
-                            <i class="fas fa-sign-in-alt"></i>
-                        </div>
-                        <h3>Dołącz do gry</h3>
-                        <p>Dołącz przez kod gry</p>
-                        <button id="join-game-menu-btn" class="btn btn-primary">
-                            <i class="fas fa-users"></i> Dołącz
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="secondary-options">
-                    <button id="friends-btn" class="btn btn-secondary">
-                        <i class="fas fa-users"></i> Znajomi
-                    </button>
-                    <button id="leaderboard-btn" class="btn btn-secondary">
-                        <i class="fas fa-trophy"></i> Ranking
-                    </button>
-                    <button id="stats-btn" class="btn btn-secondary">
-                        <i class="fas fa-chart-bar"></i> Statystyki
-                    </button>
-                    <button id="invitations-btn" class="btn btn-secondary">
-                        <i class="fas fa-envelope"></i> Zaproszenia
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Ekran profilu użytkownika -->
-        <div id="profile-screen" class="screen">
-            <div class="panel">
-                <div class="profile-header">
-                    <h2><i class="fas fa-user-circle"></i> Twój profil</h2>
-                    <button id="back-to-menu-btn" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Powrót
-                    </button>
-                </div>
-                
-                <div class="profile-content">
-                    <div class="profile-info">
-                        <div class="avatar-section">
-                            <div class="avatar">
-                                <i class="fas fa-user-secret"></i>
-                            </div>
-                            <h3 id="profile-username">Username</h3>
-                            <p class="profile-rank" id="profile-rank">Nowicjusz</p>
-                        </div>
-                        
-                        <div class="profile-stats">
-                            <h4><i class="fas fa-chart-line"></i> Statystyki</h4>
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <span class="stat-label">Rozegrane gry</span>
-                                    <span class="stat-value" id="stat-total-games">0</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Wygrane</span>
-                                    <span class="stat-value" id="stat-games-won">0</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Punkty</span>
-                                    <span class="stat-value" id="stat-total-score">0</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Najlepszy wynik</span>
-                                    <span class="stat-value" id="stat-best-score">0</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Jako impostor</span>
-                                    <span class="stat-value" id="stat-impostor-wins">0</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Poziom</span>
-                                    <span class="stat-value" id="stat-level">1</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="profile-edit">
-                        <h4><i class="fas fa-edit"></i> Edytuj profil</h4>
-                        <div class="input-group">
-                            <label for="edit-username">
-                                <i class="fas fa-user"></i> Nowa nazwa użytkownika:
-                            </label>
-                            <input type="text" id="edit-username" placeholder="Nowy login">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="edit-email">
-                                <i class="fas fa-envelope"></i> E-mail:
-                            </label>
-                            <input type="email" id="edit-email" placeholder="nowy@email.pl">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="edit-password">
-                                <i class="fas fa-lock"></i> Nowe hasło (pozostaw puste aby nie zmieniać):
-                            </label>
-                            <input type="password" id="edit-password" placeholder="Nowe hasło">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label for="edit-password-confirm">
-                                <i class="fas fa-lock"></i> Potwierdź hasło:
-                            </label>
-                            <input type="password" id="edit-password-confirm" placeholder="Potwierdź hasło">
-                        </div>
-                        
-                        <div class="button-group">
-                            <button id="save-profile-btn" class="btn btn-success">
-                                <i class="fas fa-save"></i> Zapisz zmiany
-                            </button>
-                            <button id="cancel-edit-btn" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Anuluj
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Ekran znajomych -->
-        <div id="friends-screen" class="screen">
-            <div class="panel">
-                <div class="friends-header">
-                    <h2><i class="fas fa-users"></i> Znajomi</h2>
-                    <button id="friends-back-btn" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Powrót
-                    </button>
-                </div>
-                
-                <div class="friends-tabs">
-                    <button class="tab-btn active" data-tab="friends-list">Lista znajomych</button>
-                    <button class="tab-btn" data-tab="friend-requests">Prośby (<span id="requests-count">0</span>)</button>
-                    <button class="tab-btn" data-tab="add-friend">Dodaj znajomego</button>
-                </div>
-                
-                <div class="tab-content active" id="friends-list-tab">
-                    <div id="friends-container" class="friends-container">
-                        <!-- Lista znajomych będzie ładowana dynamicznie -->
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="friend-requests-tab">
-                    <div id="requests-container" class="requests-container">
-                        <!-- Lista próśb będzie ładowana dynamicznie -->
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="add-friend-tab">
-                    <div class="add-friend-form">
-                        <div class="input-group">
-                            <label for="friend-username">
-                                <i class="fas fa-user"></i> Nazwa użytkownika znajomego:
-                            </label>
-                            <input type="text" id="friend-username" placeholder="Wpisz login znajomego">
-                        </div>
-                        <button id="send-friend-request-btn" class="btn btn-primary">
-                            <i class="fas fa-user-plus"></i> Wyślij prośbę
-                        </button>
-                        <p class="hint-text">Znajomy otrzyma powiadomienie i będzie mógł zaakceptować twoją prośbę.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Ekran rankingu -->
-        <div id="leaderboard-screen" class="screen">
-            <div class="panel">
-                <div class="leaderboard-header">
-                    <h2><i class="fas fa-trophy"></i> Ranking graczy</h2>
-                    <button id="leaderboard-back-btn" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Powrót
-                    </button>
-                </div>
-                
-                <div class="leaderboard-tabs">
-                    <button class="lb-tab-btn active" data-lb-tab="score">Najwięcej punktów</button>
-                    <button class="lb-tab-btn" data-lb-tab="wins">Najwięcej wygranych</button>
-                    <button class="lb-tab-btn" data-lb-tab="impostor">Najlepsi impostorzy</button>
-                </div>
-                
-                <div class="leaderboard-content active" id="score-leaderboard">
-                    <div class="leaderboard-table">
-                        <div class="table-header">
-                            <div class="table-cell">Miejsce</div>
-                            <div class="table-cell">Gracz</div>
-                            <div class="table-cell">Punkty</div>
-                            <div class="table-cell">Poziom</div>
-                            <div class="table-cell">Ranga</div>
-                        </div>
-                        <div id="score-leaderboard-body">
-                            <!-- Ranking punktów będzie ładowany dynamicznie -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="leaderboard-content" id="wins-leaderboard">
-                    <div class="leaderboard-table">
-                        <div class="table-header">
-                            <div class="table-cell">Miejsce</div>
-                            <div class="table-cell">Gracz</div>
-                            <div class="table-cell">Wygrane</div>
-                            <div class="table-cell">Wszystkie gry</div>
-                            <div class="table-cell">% wygranych</div>
-                        </div>
-                        <div id="wins-leaderboard-body">
-                            <!-- Ranking wygranych będzie ładowany dynamicznie -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="leaderboard-content" id="impostor-leaderboard">
-                    <div class="leaderboard-table">
-                        <div class="table-header">
-                            <div class="table-cell">Miejsce</div>
-                            <div class="table-cell">Gracz</div>
-                            <div class="table-cell">Wygrane jako impostor</div>
-                            <div class="table-cell">Gry jako impostor</div>
-                            <div class="table-cell">% wygranych</div>
-                        </div>
-                        <div id="impostor-leaderboard-body">
-                            <!-- Ranking impostorów będzie ładowany dynamicznie -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="leaderboard-footer">
-                    <p>Łącznie graczy: <span id="total-players">0</span> | Łącznie gier: <span id="total-games">0</span></p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Ekran statystyk -->
-        <div id="stats-screen" class="screen">
-            <div class="panel">
-                <div class="stats-header">
-                    <h2><i class="fas fa-chart-bar"></i> Twoje statystyki</h2>
-                    <button id="stats-back-btn" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Powrót
-                    </button>
-                </div>
-                
-                <div class="detailed-stats">
-                    <div class="stats-section">
-                        <h3><i class="fas fa-gamepad"></i> Ogólne</h3>
-                        <div class="stats-grid detailed">
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
-                                <div class="stat-info">
-                                    <div class="stat-label">Dołączył</div>
-                                    <div class="stat-value" id="stat-join-date">-</div>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-clock"></i></div>
-                                <div class="stat-info">
-                                    <div class="stat-label">Ostatnia gra</div>
-                                    <div class="stat-value" id="stat-last-played">-</div>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-chart-pie"></i></div>
-                                <div class="stat-info">
-                                    <div class="stat-label">Wskaźnik wygranych</div>
-                                    <div class="stat-value" id="stat-win-rate">0%</div>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-fire"></i></div>
-                                <div class="stat-info">
-                                    <div class="stat-label">Doświadczenie</div>
-                                    <div class="stat-value" id="stat-experience">0 XP</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stats-section">
-                        <h3><i class="fas fa-user-secret"></i> Jako Impostor</h3>
-                        <div class="stats-grid detailed">
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-crown"></i></div>
-                                <div class="stat-info">
-                                    <div class="stat-label">Gry jako impostor</div>
-                                    <div class="stat-value" id="stat-impostor-games">0</div>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-trophy"></i></div>
-                                <div class="stat-info">
-                                    <div class="stat-label">Wygrane jako impostor</div>
-                                    <div class="stat-value" id="stat-impostor-wins-detailed">0</div>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-percentage"></i></div>
-                                <div class="stat-info">
-                                    <div class="stat-label">Skuteczność impostora</div>
-                                    <div class="stat-value" id="stat-impostor-rate">0%</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stats-section">
-                        <h3><i class="fas fa-chart-line"></i> Postępy</h3>
-                        <div class="progress-section">
-                            <div class="progress-label">
-                                <span>Poziom <span id="current-level">1</span></span>
-                                <span><span id="current-xp">0</span>/<span id="next-level-xp">1000</span> XP</span>
-                            </div>
-                            <div class="progress-bar-large">
-                                <div class="progress-fill-large" id="xp-progress" style="width: 0%"></div>
-                            </div>
-                            <div class="next-rank">
-                                Następna ranga: <span id="next-rank">Ekspert</span> przy <span id="next-rank-xp">500</span> XP
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Ekran zaproszeń -->
-        <div id="invitations-screen" class="screen">
-            <div class="panel">
-                <div class="invitations-header">
-                    <h2><i class="fas fa-envelope"></i> Zaproszenia do gier</h2>
-                    <button id="invitations-back-btn" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Powrót
-                    </button>
-                </div>
-                
-                <div id="invitations-container" class="invitations-container">
-                    <!-- Lista zaproszeń będzie ładowana dynamicznie -->
-                    <div class="empty-state" id="no-invitations">
-                        <i class="fas fa-envelope-open"></i>
-                        <h3>Brak zaproszeń</h3>
-                        <p>Nie masz aktualnie żadnych zaproszeń do gier.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Reszta istniejących ekranów (create, join, waiting, game, finalResults) pozostaje bez zmian -->
-        <!-- ... -->
-        
-        <!-- Nowy ekran dla gry szybkiej -->
-        <div id="quick-play-screen" class="screen">
-            <div class="panel">
-                <h2><i class="fas fa-bolt"></i> Szybka gra</h2>
-                <p>Szukanie dostępnej gry...</p>
-                
-                <div class="searching-animation">
-                    <div class="spinner"></div>
-                    <p id="search-status">Łączenie z serwerem...</p>
-                </div>
-                
-                <div class="quick-play-stats">
-                    <p><strong>Aktywne gry:</strong> <span id="active-games-count">0</span></p>
-                    <p><strong>Gracze online:</strong> <span id="online-players-count">0</span></p>
                 </div>
                 
                 <div class="button-group">
-                    <button id="cancel-quick-play-btn" class="btn btn-danger">
-                        <i class="fas fa-times"></i> Anuluj
+                    <button id="create-game-final-btn" class="btn btn-primary">
+                        <i class="fas fa-play-circle"></i> Stwórz grę
+                    </button>
+                    <button id="back-to-start-from-create" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Wróć
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran dołączania do gry -->
+        <div id="join-screen" class="screen">
+            <div class="panel">
+                <h2><i class="fas fa-sign-in-alt"></i> Dołącz do gry</h2>
+                <p>Wpisz kod gry, który otrzymałeś od prowadzącego.</p>
+                
+                <div class="input-group">
+                    <label for="game-code-input">
+                        <i class="fas fa-qrcode"></i> Kod gry:
+                    </label>
+                    <input type="text" id="game-code-input" placeholder="Wpisz 6-cyfrowy kod" maxlength="6" style="text-transform: uppercase;">
+                </div>
+                
+                <div class="input-group">
+                    <label for="player-name-input">
+                        <i class="fas fa-user"></i> Twój pseudonim:
+                    </label>
+                    <input type="text" id="player-name-input" placeholder="Wpisz swój pseudonim">
+                </div>
+                
+                <div class="button-group">
+                    <button id="join-game-final-btn" class="btn btn-primary">
+                        <i class="fas fa-gamepad"></i> Dołącz do gry
+                    </button>
+                    <button id="back-to-start-from-join" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Wróć
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran oczekiwania na graczy (prowadzący) -->
+        <div id="waiting-host-screen" class="screen">
+            <div class="panel">
+                <h2><i class="fas fa-users"></i> Oczekiwanie na graczy</h2>
+                <p>Podaj ten kod graczom, aby mogli dołączyć:</p>
+                
+                <div id="game-code-display" class="code-display">
+                    <span id="code-text">ABCDEF</span>
+                    <button id="copy-code-btn" class="btn-icon" title="Skopiuj kod">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                
+                <div class="game-info">
+                    <p><strong>Tryb gry:</strong> <span id="waiting-game-mode">Wszyscy jednocześnie</span></p>
+                    <p><strong>Impostorzy:</strong> <span id="waiting-impostors">1</span> | <strong>Rundy:</strong> <span id="waiting-rounds">4</span> | <strong>Czas:</strong> <span id="waiting-time">45</span>s</p>
+                </div>
+                
+                <div class="players-section">
+                    <h3><i class="fas fa-user-friends"></i> Gracze w lobby (<span id="player-count">1</span>)</h3>
+                    <div id="players-list" class="players-list">
+                        <!-- Gracze będą dodawani dynamicznie -->
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="start-game-btn" class="btn btn-success" disabled>
+                        <i class="fas fa-play"></i> Rozpocznij grę (min. 3 graczy)
+                    </button>
+                    <button id="cancel-game-btn" class="btn btn-danger">
+                        <i class="fas fa-times"></i> Anuluj grę
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran oczekiwania na start (gracz) -->
+        <div id="waiting-player-screen" class="screen">
+            <div class="panel">
+                <h2><i class="fas fa-hourglass-half"></i> Oczekiwanie na rozpoczęcie gry</h2>
+                <p>Poczekaj, aż prowadzący rozpocznie grę...</p>
+                
+                <div class="game-info">
+                    <p><strong>Kod gry:</strong> <span id="waiting-game-code" class="code-small">ABCDEF</span></p>
+                    <p><strong>Tryb:</strong> <span id="waiting-player-mode">Wszyscy jednocześnie</span></p>
+                    <p><strong>Impostorzy:</strong> <span id="waiting-player-impostors">1</span> | <strong>Rundy:</strong> <span id="waiting-player-rounds">4</span></p>
+                </div>
+                
+                <div class="players-section">
+                    <h3><i class="fas fa-user-friends"></i> Gracze w lobby (<span id="waiting-player-count">1</span>)</h3>
+                    <div id="waiting-players-list" class="players-list">
+                        <!-- Gracze będą dodawani dynamicznie -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran gry -->
+        <div id="game-screen" class="screen">
+            <div class="panel">
+                <div class="game-header">
+                    <div class="game-info">
+                        <h3 id="current-game-name">Gra Impostor</h3>
+                        <div class="round-info">
+                            <span class="round-badge">Runda <span id="current-round">1</span>/<span id="total-rounds">4</span></span>
+                            <span class="game-mode-badge" id="game-mode-badge">Wszyscy</span>
+                            <span class="impostor-badge">👤<span id="impostor-count">1</span></span>
+                            <span class="time-badge" id="timer">45</span>
+                        </div>
+                    </div>
+                    
+                    <div id="player-role-display">
+                        <!-- Rola gracza będzie wyświetlana tutaj -->
+                    </div>
+                </div>
+                
+                <!-- Sekcja dla trybu sequential - czyja kolej -->
+                <div id="turn-section" style="display: none;">
+                    <div class="turn-info">
+                        <h3><i class="fas fa-user-clock"></i> Kolej gracza:</h3>
+                        <div id="current-turn-player" class="current-turn">
+                            <!-- Aktualny gracz będzie wyświetlany tutaj -->
+                        </div>
+                        <div id="turn-timer" class="turn-timer">30</div>
+                    </div>
+                </div>
+                
+                <div class="word-section">
+                    <div class="word-label">
+                        <i class="fas fa-key"></i> Twoje hasło/podpowiedź:
+                    </div>
+                    <div id="word-display" class="word-display">
+                        Kot
+                    </div>
+                    <div id="role-hint" class="hint-text">
+                        <!-- Podpowiedź roli -->
+                    </div>
+                </div>
+                
+                <div id="association-section">
+                    <h3><i class="fas fa-comment-dots"></i> Napisz skojarzenie:</h3>
+                    <p id="association-instruction">Wpisz słowo, które kojarzy Ci się z hasłem/podpowiedzią powyżej.</p>
+                    
+                    <div class="association-input-container">
+                        <input type="text" id="association-input" placeholder="Twoje skojarzenie...">
+                        <button id="submit-association-btn" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Wyślij
+                        </button>
+                    </div>
+                    
+                    <!-- Sekcja zgadywania hasła dla impostora -->
+                    <div id="guess-section" style="display: none; margin-top: 20px;">
+                        <h4><i class="fas fa-question-circle"></i> Jesteś impostorem! Spróbuj zgadnąć hasło:</h4>
+                        <div class="guess-input-container">
+                            <input type="text" id="guess-input" placeholder="Twoje zgadywanie...">
+                            <button id="submit-guess-btn" class="btn btn-danger">
+                                <i class="fas fa-lightbulb"></i> Zgadnij
+                            </button>
+                        </div>
+                        <p style="font-size: 0.9rem; color: #fb8f8f; margin-top: 5px;">
+                            Jeśli odgadniesz hasło, wygrasz dodatkowe punkty!
+                        </p>
+                    </div>
+                    
+                    <div id="submitted-message" class="success-message" style="display: none;">
+                        <i class="fas fa-check-circle"></i> Twoje skojarzenie zostało wysłane!
+                    </div>
+                    
+                    <div id="guessed-message" class="warning-message" style="display: none;">
+                        <i class="fas fa-lightbulb"></i> Twoje zgadywanie zostało wysłane!
+                    </div>
+                </div>
+                
+                <div id="waiting-section" style="display: none;">
+                    <div class="waiting-message">
+                        <i class="fas fa-hourglass-half"></i>
+                        <h3>Oczekiwanie na innych graczy...</h3>
+                        <p id="waiting-message-text">Wszyscy muszą wysłać swoje skojarzenia zanim przejdziemy dalej.</p>
+                        
+                        <div class="players-progress">
+                            <div id="progress-text">0/0 graczy gotowych</div>
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SEKCJA: Decyzja po rundzie -->
+                <div id="decision-section" style="display: none;">
+                    <div class="panel" style="background-color: rgba(15, 21, 48, 0.8); margin-top: 20px;">
+                        <h3 style="text-align: center; color: #8f94fb;">
+                            <i class="fas fa-question-circle"></i> Co robimy dalej?
+                        </h3>
+                        <p style="text-align: center; margin-bottom: 30px;">
+                            Wszyscy wysłali skojarzenia. Zagłosuj, co chcesz zrobić:
+                        </p>
+                        
+                        <div class="associations-list" style="margin-bottom: 30px;">
+                            <h4 style="text-align: center; margin-bottom: 20px; color: #b0b0d0;">
+                                <i class="fas fa-list"></i> Skojarzenia z tej rundy:
+                            </h4>
+                            <div id="decision-associations-list" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                                <!-- Skojarzenia będą dodawane dynamicznie -->
+                            </div>
+                        </div>
+                        
+                        <div class="decision-options">
+                            <div class="keep-word-option" style="margin-bottom: 20px; text-align: center;">
+                                <label style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                                    <input type="checkbox" id="keep-same-word">
+                                    Zachowaj to samo hasło na następną rundę
+                                </label>
+                                <small style="color: #8f94fb; display: block; margin-top: 5px;">
+                                    Jeśli wybierzesz, hasło nie zmieni się w następnej rundzie
+                                </small>
+                            </div>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <button id="vote-impostor-btn" class="btn btn-danger" style="margin-right: 20px; padding: 15px 30px; font-size: 1.2rem;">
+                                    <i class="fas fa-user-secret"></i> Głosuj na impostora
+                                </button>
+                                <button id="continue-game-btn" class="btn btn-success" style="padding: 15px 30px; font-size: 1.2rem;">
+                                    <i class="fas fa-forward"></i> Graj dalej
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="decision-status" style="text-align: center; margin-top: 20px; color: #8f94fb; font-style: italic;">
+                            Oczekiwanie na twoją decyzję...
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="voting-section" style="display: none;">
+                    <h3><i class="fas fa-vote-yea"></i> Głosowanie na impostora</h3>
+                    <p>Przeczytaj wszystkie skojarzenia i zagłosuj, kto twoim zdaniem jest impostorem.</p>
+                    
+                    <!-- Sekcja zgadywania hasła dla impostora w trybie simultaneous -->
+                    <div id="voting-guess-section" style="display: none; margin-bottom: 30px;">
+                        <div class="panel" style="background-color: rgba(200, 78, 78, 0.1); border-color: #c84e4e;">
+                            <h4 style="color: #fb8f8f;">
+                                <i class="fas fa-lightbulb"></i> Jesteś impostorem! Możesz zgadnąć hasło:
+                            </h4>
+                            <div class="guess-input-container" style="display: flex; gap: 10px; margin-top: 15px;">
+                                <input type="text" id="voting-guess-input" placeholder="Twoje zgadywanie..." style="flex-grow: 1;">
+                                <button id="submit-voting-guess-btn" class="btn btn-danger">
+                                    <i class="fas fa-lightbulb"></i> Zgadnij
+                                </button>
+                            </div>
+                            <p style="font-size: 0.9rem; color: #fb8f8f; margin-top: 10px;">
+                                Jeśli odgadniesz hasło, wygrasz dodatkowe punkty i zakończysz grę!
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div id="associations-list" class="associations-list">
+                        <!-- Skojarzenia będą dodawane dynamicznie -->
+                    </div>
+                    
+                    <div class="vote-section">
+                        <h4>Zagłosuj na impostora (możesz głosować na dowolnego gracza):</h4>
+                        <div id="vote-options" class="vote-options">
+                            <!-- Opcje głosowania będą dodawane dynamicznie -->
+                        </div>
+                        
+                        <div id="voted-message" class="success-message" style="display: none;">
+                            <i class="fas fa-check-circle"></i> Twój głos został oddany!
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="results-section" style="display: none;">
+                    <div id="results-content">
+                        <!-- Wyniki głosowania będą dodawane dynamicznie -->
+                    </div>
+                    
+                    <div class="button-group" id="host-controls" style="display: none;">
+                        <button id="next-round-btn" class="btn btn-primary">
+                            <i class="fas fa-forward"></i> Następna runda
+                        </button>
+                        <button id="end-game-btn" class="btn btn-secondary">
+                            <i class="fas fa-stop"></i> Zakończ grę
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Sekcja gdy impostor odgadł hasło -->
+                <div id="word-guessed-section" style="display: none;">
+                    <div class="panel" style="background-color: rgba(200, 78, 78, 0.1); border-color: #c84e4e; text-align: center;">
+                        <h2 style="color: #fb8f8f;">
+                            <i class="fas fa-trophy"></i> IMPOSTOR ODGADŁ HASŁO!
+                        </h2>
+                        <div id="word-guessed-content">
+                            <!-- Informacje o odgadnięciu hasła -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-trophy"></i> Wyniki</h3>
+                    <div id="scoreboard" class="scoreboard">
+                        <!-- Tabela wyników będzie dodawana dynamicznie -->
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-users"></i> Gracze (<span id="players-count">1</span>)</h3>
+                    <div id="game-players-list" class="players-list">
+                        <!-- Lista graczy w trakcie gry -->
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-info-circle"></i> Informacje o grze</h3>
+                    <div id="game-info-sidebar">
+                        <p><strong>Tryb:</strong> <span id="sidebar-game-mode">Wszyscy</span></p>
+                        <p><strong>Impostorzy:</strong> <span id="sidebar-impostor-count">1</span></p>
+                        <p><strong>Aktualne hasło:</strong> <span id="sidebar-current-word">-</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran wyników końcowych -->
+        <div id="final-results-screen" class="screen">
+            <div class="panel">
+                <div id="final-results-content">
+                    <!-- Wyniki końcowe będą dodawane dynamicznie -->
+                </div>
+                
+                <div class="button-group">
+                    <button id="play-again-btn" class="btn btn-primary">
+                        <i class="fas fa-redo"></i> Zagraj ponownie
+                    </button>
+                    <button id="back-to-menu-btn" class="btn btn-secondary">
+                        <i class="fas fa-home"></i> Powrót do menu
                     </button>
                 </div>
             </div>
@@ -517,25 +449,9 @@
         <div id="connection-status" class="connection-status">
             <i class="fas fa-circle"></i> <span id="status-text">Łączenie...</span>
         </div>
-        
-        <!-- Nowe: Mini-profil w rogu -->
-        <div id="mini-profile" class="mini-profile" style="display: none;">
-            <div class="mini-avatar">
-                <i class="fas fa-user"></i>
-            </div>
-            <div class="mini-info">
-                <div class="mini-username" id="mini-username">Gracz</div>
-                <div class="mini-score"><i class="fas fa-star"></i> <span id="mini-score">0</span></div>
-            </div>
-            <button id="mini-profile-btn" class="btn-icon">
-                <i class="fas fa-chevron-down"></i>
-            </button>
-        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
-    <script src="auth-client.js"></script>
-    <script src="game-client.js"></script>
 </body>
 </html>
