@@ -21,7 +21,7 @@
                     <i class="fas fa-user-secret"></i>
                 </div>
                 <h2>Witaj w grze Impostor!</h2>
-                <p>Dołącz do gry i sprawdź, czy potrafisz odkryć, kto jest impostorem!</p>
+                <p>W każdej rundzie gracze widzą hasło, a impostor tylko podpowiedź. Impostor próbuje udawać, że zna hasło, podczas gdy gracze próbują go zdemaskować po skojarzeniach!</p>
                 
                 <div class="button-group">
                     <button id="create-game-btn" class="btn btn-primary">
@@ -38,6 +38,7 @@
         <div id="create-screen" class="screen">
             <div class="panel">
                 <h2><i class="fas fa-cogs"></i> Tworzenie nowej gry</h2>
+                <p>Skonfiguruj ustawienia gry. Hasło będzie losowane automatycznie.</p>
                 
                 <div class="input-group">
                     <label for="player-name-host">
@@ -80,7 +81,6 @@
                         <select id="num-impostors">
                             <option value="1" selected>1 impostor</option>
                             <option value="2">2 impostorów</option>
-                            <option value="3">3 impostorów</option>
                         </select>
                     </div>
                     
@@ -257,7 +257,7 @@
                             </button>
                         </div>
                         <p style="font-size: 0.9rem; color: #fb8f8f; margin-top: 5px;">
-                            Jeśli odgadniesz hasło, wygrasz dodatkowe punkty!
+                            Jeśli odgadniesz hasło, wygrasz rundę!
                         </p>
                     </div>
                     
@@ -305,23 +305,32 @@
                         </div>
                         
                         <div class="decision-options">
-                            <div class="keep-word-option" style="margin-bottom: 20px; text-align: center;">
-                                <label style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                                    <input type="checkbox" id="keep-same-word">
-                                    Zachowaj to samo hasło na następną rundę
-                                </label>
-                                <small style="color: #8f94fb; display: block; margin-top: 5px;">
-                                    Jeśli wybierzesz, hasło nie zmieni się w następnej rundzie
-                                </small>
+                            <!-- Opcja zachowania hasła tylko dla hosta -->
+                            <div id="keep-word-option" class="keep-word-option" style="display: none; margin-bottom: 20px; text-align: center;">
+                                <h4 style="color: #8f94fb;">Czy zachować to samo hasło?</h4>
+                                <div style="display: flex; gap: 20px; justify-content: center; margin-top: 15px;">
+                                    <button id="keep-word-btn" class="btn btn-success">
+                                        <i class="fas fa-lock"></i> Zachowaj to samo hasło
+                                    </button>
+                                    <button id="new-word-btn" class="btn btn-secondary">
+                                        <i class="fas fa-random"></i> Losuj nowe hasło
+                                    </button>
+                                </div>
                             </div>
                             
-                            <div style="text-align: center; margin-top: 30px;">
+                            <!-- Przyciski decyzji dla wszystkich graczy -->
+                            <div id="vote-buttons" style="text-align: center; margin-top: 30px;">
                                 <button id="vote-impostor-btn" class="btn btn-danger" style="margin-right: 20px; padding: 15px 30px; font-size: 1.2rem;">
                                     <i class="fas fa-user-secret"></i> Głosuj na impostora
                                 </button>
                                 <button id="continue-game-btn" class="btn btn-success" style="padding: 15px 30px; font-size: 1.2rem;">
                                     <i class="fas fa-forward"></i> Graj dalej
                                 </button>
+                            </div>
+                            
+                            <!-- Przyciski decyzji tylko dla hosta -->
+                            <div id="host-decision-buttons" style="display: none; text-align: center; margin-top: 30px;">
+                                <!-- Przyciski będą pokazywane tylko dla hosta w showHostDecisionPhase -->
                             </div>
                         </div>
                         
