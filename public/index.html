@@ -10,7 +10,7 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-user-secret"></i> Gra Impostor</h1>
+            <h1><i class="fas fa-user-secret"></i> Gra Impostor stworzona przez Jasia Chmare</h1>
             <p class="subtitle">Wszyscy dostają hasło, impostor tylko podpowiedź. Znajdź oszusta po skojarzeniach!</p>
         </header>
         
@@ -21,8 +21,8 @@
                     <i class="fas fa-user-secret"></i>
                 </div>
                 <h2>Witaj w grze Impostor!</h2>
-                <p>Jedna osoba tworzy pokój i ustawia hasło. Gracze dołączają przez kod. Jeden z graczy jest impostorem - widzi tylko podpowiedź do hasła!</p>
-                <p>W każdej rundzie gracze piszą skojarzenie z hasłem. Impostor musi się ukrywać. Po rundach następuje głosowanie - kto jest impostorem?</p>
+                <p>Jedna osoba tworzy pokój. Gracze dołączają przez kod. Jeden z graczy jest impostorem - widzi tylko podpowiedź do hasła!</p>
+                <p>W każdej rundzie gracze piszą skojarzenie z hasłem. Impostor musi się ukrywać. Po rundzie głosujecie, czy przejść do głosowania na impostora, czy grać dalej.</p>
                 
                 <div class="button-group">
                     <button id="create-game-btn" class="btn btn-primary">
@@ -39,28 +39,13 @@
         <div id="create-screen" class="screen">
             <div class="panel">
                 <h2><i class="fas fa-cogs"></i> Tworzenie nowej gry</h2>
-                <p>Ustaw hasło i podpowiedź dla impostora. Określ liczbę rund.</p>
+                <p>Hasło będzie losowane automatycznie z bazy haseł.</p>
                 
                 <div class="input-group">
                     <label for="player-name-host">
                         <i class="fas fa-user"></i> Twój pseudonim:
                     </label>
                     <input type="text" id="player-name-host" placeholder="np. Marek" value="Host">
-                </div>
-                
-                <div class="input-group">
-                    <label for="game-word">
-                        <i class="fas fa-key"></i> Hasło (widzą wszyscy oprócz impostora):
-                    </label>
-                    <input type="text" id="game-word" placeholder="np. Kot, Morze, Samochód" value="Kot">
-                </div>
-                
-                <div class="input-group">
-                    <label for="game-hint">
-                        <i class="fas fa-lightbulb"></i> Podpowiedź dla impostora:
-                    </label>
-                    <input type="text" id="game-hint" placeholder="np. Zwierzę, Woda, Pojazd" value="Zwierzę">
-                    <small>Tylko impostor zobaczy tę podpowiedź zamiast hasła</small>
                 </div>
                 
                 <div class="form-row">
@@ -145,9 +130,8 @@
                 </div>
                 
                 <div class="game-info">
-                    <p><strong>Hasło:</strong> <span id="waiting-word">Kot</span></p>
-                    <p><strong>Podpowiedź dla impostora:</strong> <span id="waiting-hint">Zwierzę</span></p>
-                    <p><strong>Rundy:</strong> <span id="waiting-rounds">4</span> | <strong>Czas na rundę:</strong> <span id="waiting-time">45</span>s</p>
+                    <p><strong>Liczba rund:</strong> <span id="waiting-rounds">4</span> | <strong>Czas na rundę:</strong> <span id="waiting-time">45</span>s</p>
+                    <p><small>Hasło będzie losowane automatycznie dla każdej rundy</small></p>
                 </div>
                 
                 <div class="players-section">
@@ -248,8 +232,42 @@
                     </div>
                 </div>
                 
+                <!-- NOWA SEKCJA: Decyzja po rundzie -->
+                <div id="decision-section" style="display: none;">
+                    <div class="panel" style="background-color: rgba(15, 21, 48, 0.8); margin-top: 20px;">
+                        <h3 style="text-align: center; color: #8f94fb;">
+                            <i class="fas fa-question-circle"></i> Co robimy dalej?
+                        </h3>
+                        <p style="text-align: center; margin-bottom: 30px;">
+                            Wszyscy wysłali skojarzenia. Zagłosuj, co chcesz zrobić:
+                        </p>
+                        
+                        <div class="associations-list" style="margin-bottom: 30px;">
+                            <h4 style="text-align: center; margin-bottom: 20px; color: #b0b0d0;">
+                                <i class="fas fa-list"></i> Skojarzenia z tej rundy:
+                            </h4>
+                            <div id="decision-associations-list" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                                <!-- Skojarzenia będą dodawane dynamicznie -->
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 30px;">
+                            <button id="vote-impostor-btn" class="btn btn-danger" style="margin-right: 20px; padding: 15px 30px; font-size: 1.2rem;">
+                                <i class="fas fa-user-secret"></i> Głosuj na impostora
+                            </button>
+                            <button id="continue-game-btn" class="btn btn-success" style="padding: 15px 30px; font-size: 1.2rem;">
+                                <i class="fas fa-forward"></i> Graj dalej
+                            </button>
+                        </div>
+                        
+                        <div id="decision-status" style="text-align: center; margin-top: 20px; color: #8f94fb; font-style: italic;">
+                            Oczekiwanie na twoją decyzję...
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="voting-section" style="display: none;">
-                    <h3><i class="fas fa-vote-yea"></i> Głosowanie</h3>
+                    <h3><i class="fas fa-vote-yea"></i> Głosowanie na impostora</h3>
                     <p>Przeczytaj wszystkie skojarzenia i zagłosuj, kto twoim zdaniem jest impostorem.</p>
                     
                     <div id="associations-list" class="associations-list">
