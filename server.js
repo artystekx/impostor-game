@@ -26,7 +26,7 @@ const wordPairs = [
   { word: "TELEFON", hint: "Urządzenie do komunikacji" },
   { word: "OKNO", hint: "Element budynku" },
   { word: "DRZEWO", hint: "Roślina" },
-  { word: "NIKODEM BEDOŁEK", hint: "Polonia Chodzież" },
+  { word: "SŁOŃCE", hint: "Gwiazda" },
   { word: "WODA", hint: "Płyn" },
   { word: "OGIEŃ", hint: "Żywioł" },
   { word: "ZAMEK", hint: "Budowla" },
@@ -86,6 +86,7 @@ class Game {
     this.hint = this.currentWordPair.hint;
     this.wordGuessed = false;
     this.guessFailed = false;
+    this.gameEnded = false;
   }
 
   getRandomWordPair() {
@@ -128,15 +129,19 @@ class Game {
     this.currentRound = 1;
     this.wordGuessed = false;
     this.guessFailed = false;
+    this.gameEnded = false;
     
-    // Wybierz impostorów (host też może być impostorem)
+    // Wybierz impostorów - host też może być impostorem!
     this.impostorIds = [];
     const allPlayers = Array.from(this.players.values());
     
-    if (allPlayers.length >= this.numImpostors) {
+    // Zapewnij, że jest przynajmniej jeden impostor
+    if (allPlayers.length > 0) {
       // Losowo wybierz impostorów spośród WSZYSTKICH graczy (w tym hosta)
       const shuffled = [...allPlayers].sort(() => 0.5 - Math.random());
-      for (let i = 0; i < this.numImpostors && i < shuffled.length; i++) {
+      const impostorCount = Math.min(this.numImpostors, allPlayers.length);
+      
+      for (let i = 0; i < impostorCount; i++) {
         this.impostorIds.push(shuffled[i].id);
         this.players.get(shuffled[i].id).isImpostor = true;
       }
@@ -212,11 +217,10 @@ class Game {
     
     if (this.gameMode === 'sequential') {
       const allCompleted = Array.from(this.players.values())
-        .every(p => p.turnCompleted || p.isHost); // Host też składa skojarzenie
+        .every(p => p.turnCompleted);
       
       return allCompleted;
     } else {
-      // W trybie simultaneous wszyscy (łącznie z hostem) składają skojarzenia
       const allSubmitted = Array.from(this.players.values())
         .every(p => p.hasSubmitted);
       
@@ -236,7 +240,8 @@ class Game {
     
     if (guessedCorrectly) {
       this.wordGuessed = true;
-      this.isPlaying = false; // Gra się kończy
+      this.isPlaying = false;
+      this.gameEnded = true;
       return {
         correct: true,
         guesserId: playerId,
@@ -244,7 +249,8 @@ class Game {
       };
     } else {
       this.guessFailed = true;
-      this.isPlaying = false; // Gra się kończy
+      this.isPlaying = false;
+      this.gameEnded = true;
       return {
         correct: false,
         guesserId: playerId,
@@ -272,7 +278,6 @@ class Game {
     player.hasDecided = true;
     this.decisions.set(playerId, decision);
     
-    // Wszyscy gracze (łącznie z hostem) decydują
     const allDecided = Array.from(this.players.values())
       .every(p => p.hasDecided);
     
@@ -316,7 +321,7 @@ class Game {
     this.votes.set(voterId, votedPlayerId);
     
     const allVoted = Array.from(this.players.values())
-      .every(p => this.votes.has(p.id)); // Wszyscy głosują
+      .every(p => this.votes.has(p.id));
     
     if (allVoted) {
       return this.calculateVoteResults();
@@ -351,7 +356,7 @@ class Game {
     };
   }
 
-  nextRound(keepSameWord = false) {
+  nextRound(keepSameWord = true) {
     this.currentRound++;
     this.isVoting = false;
     this.isDeciding = false;
@@ -377,6 +382,7 @@ class Game {
       this.prepareTurnOrder();
     }
     
+    // ZAWSZE zachowujemy to samo hasło
     if (!keepSameWord) {
       this.currentWordPair = this.getRandomWordPair();
       this.word = this.currentWordPair.word;
@@ -412,6 +418,7 @@ class Game {
       isDeciding: this.isDeciding,
       wordGuessed: this.wordGuessed,
       guessFailed: this.guessFailed,
+      gameEnded: this.gameEnded,
       players: Array.from(this.players.values()).map(p => ({
         id: p.id,
         name: p.name,
@@ -438,8 +445,9 @@ class Game {
     if (playerId) {
       const player = this.players.get(playerId);
       if (player) {
+        // ZAWSZE wysyłamy właściwe słowo dla gracza
         if (player.isImpostor && this.isPlaying) {
-          state.playerWord = this.hint;
+          state.playerWord = this.hint; // Impostor widzi podpowiedź
           state.isImpostor = true;
           
           // Dodajemy listę współimpostorów (bez siebie)
@@ -450,7 +458,7 @@ class Game {
               return coImpostor ? coImpostor.name : 'Nieznany';
             });
         } else {
-          state.playerWord = this.word;
+          state.playerWord = this.word; // Gracz widzi hasło
           state.isImpostor = false;
         }
         
@@ -673,29 +681,14 @@ io.on('connection', (socket) => {
             gameState: game.getGameState()
           });
         } else {
-          io.to(gameCode).emit('waitingForHostDecision', {
-            decisionResult,
+          // Większość chce grać dalej - zachowujemy to samo hasło i zaczynamy nową rundę
+          game.nextRound(true); // ZAWSZE to samo hasło
+          io.to(gameCode).emit('nextRoundStarted', {
             gameState: game.getGameState()
           });
         }
       }, 1000);
     }
-  });
-  
-  socket.on('hostDecision', (data) => {
-    const { keepSameWord } = data;
-    const gameCode = socket.gameCode;
-    if (!gameCode || !games.has(gameCode)) return;
-    
-    const game = games.get(gameCode);
-    
-    if (socket.id !== game.hostId) return;
-    
-    game.nextRound(keepSameWord);
-    io.to(gameCode).emit('nextRoundStarted', {
-      keepSameWord,
-      gameState: game.getGameState()
-    });
   });
   
   socket.on('submitVote', (data) => {
@@ -744,7 +737,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    game.nextRound();
+    game.nextRound(true); // ZAWSZE to samo hasło
     
     io.to(gameCode).emit('nextRoundStarted', {
       gameState: game.getGameState()
@@ -765,6 +758,7 @@ io.on('connection', (socket) => {
     game.isDeciding = false;
     game.wordGuessed = false;
     game.guessFailed = false;
+    game.gameEnded = false;
     
     for (const player of game.players.values()) {
       player.isImpostor = false;
