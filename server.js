@@ -7,10 +7,18 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Serwowanie plików statycznych z folderu public
+// Serwowanie plików statycznych
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Przykładowe hasła i podpowiedzi
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Rozszerzona lista haseł
 const wordPairs = [
   { word: "KOT", hint: "Zwierzę domowe" },
   { word: "SAMOCHÓD", hint: "Środek transportu" },
@@ -21,30 +29,50 @@ const wordPairs = [
   { word: "SŁOŃCE", hint: "Gwiazda" },
   { word: "WODA", hint: "Płyn" },
   { word: "OGIEŃ", hint: "Żywioł" },
-  { word: "ZAMEK", hint: "Budowla" }
+  { word: "ZAMEK", hint: "Budowla" },
+  { word: "PIES", hint: "Przyjaciel człowieka" },
+  { word: "MIASTO", hint: "Duża osada" },
+  { word: "RZEKA", hint: "Płynąca woda" },
+  { word: "GÓRY", hint: "Wysokie tereny" },
+  { word: "MORZE", hint: "Duża woda" },
+  { word: "LAS", hint: "Wiele drzew" },
+  { word: "SZKŁO", hint: "Przezroczysty materiał" },
+  { word: "PAPIER", hint: "Do pisania" },
+  { word: "STÓŁ", hint: "Meble" },
+  { word: "KRZESŁO", hint: "Do siedzenia" }
 ];
 
 // Przechowywanie gier
 const games = new Map();
 
 class Game {
-  constructor(code, hostId, word, hint, rounds, roundTime) {
+  constructor(code, hostId, rounds, roundTime) {
     this.code = code;
     this.hostId = hostId;
-    this.word = word;
-    this.hint = hint;
     this.rounds = parseInt(rounds);
     this.roundTime = parseInt(roundTime);
     this.players = new Map();
     this.currentRound = 0;
     this.isPlaying = false;
     this.isVoting = false;
+    this.isDeciding = false;
     this.impostorId = null;
     this.associations = new Map();
     this.votes = new Map();
     this.voteResults = new Map();
+    this.decisions = new Map();
     this.roundStartTime = null;
     this.timer = null;
+    
+    // Losuj pierwsze hasło
+    this.currentWordPair = this.getRandomWordPair();
+    this.word = this.currentWordPair.word;
+    this.hint = this.currentWordPair.hint;
+  }
+
+  getRandomWordPair() {
+    const randomIndex = Math.floor(Math.random() * wordPairs.length);
+    return wordPairs[randomIndex];
   }
 
   addPlayer(playerId, name) {
@@ -55,11 +83,10 @@ class Game {
       isImpostor: false,
       isHost: playerId === this.hostId,
       hasSubmitted: false,
-      association: ''
+      association: '',
+      hasDecided: false
     });
     
-    // Jeśli to pierwszy gracz (nie host), ustaw jako impostora na razie
-    // Później zostanie wylosowany nowy impostor przy starcie gry
     if (this.players.size === 2 && !this.isPlaying) {
       const nonHostPlayers = Array.from(this.players.values())
         .filter(p => !p.isHost);
@@ -76,7 +103,6 @@ class Game {
     const wasImpostor = this.players.get(playerId)?.isImpostor;
     this.players.delete(playerId);
     
-    // Jeśli impostor wyszedł, wybierz nowego
     if (wasImpostor && this.players.size > 1 && this.isPlaying) {
       const nonHostPlayers = Array.from(this.players.values())
         .filter(p => !p.isHost && p.id !== this.hostId);
@@ -86,9 +112,8 @@ class Game {
       }
     }
     
-    // Jeśli host wyszedł, zakończ grę
     if (playerId === this.hostId) {
-      return true; // Koniec gry
+      return true;
     }
     
     return false;
@@ -98,7 +123,6 @@ class Game {
     this.isPlaying = true;
     this.currentRound = 1;
     
-    // Losowanie impostora (ktoś inny niż host)
     const nonHostPlayers = Array.from(this.players.values())
       .filter(p => !p.isHost);
     
@@ -108,15 +132,20 @@ class Game {
       this.players.get(this.impostorId).isImpostor = true;
     }
     
-    // Reset stanu graczy
     for (const player of this.players.values()) {
       player.hasSubmitted = false;
       player.association = '';
+      player.hasDecided = false;
     }
     
     this.associations.clear();
     this.votes.clear();
     this.voteResults.clear();
+    this.decisions.clear();
+    
+    this.currentWordPair = this.getRandomWordPair();
+    this.word = this.currentWordPair.word;
+    this.hint = this.currentWordPair.hint;
     
     return this.getGameState();
   }
@@ -129,7 +158,6 @@ class Game {
     player.hasSubmitted = true;
     this.associations.set(playerId, association);
     
-    // Sprawdź czy wszyscy już wysłali
     const allSubmitted = Array.from(this.players.values())
       .filter(p => !p.isHost)
       .every(p => p.hasSubmitted);
@@ -137,8 +165,60 @@ class Game {
     return allSubmitted;
   }
 
+  startDecisionPhase() {
+    this.isDeciding = true;
+    this.isVoting = false;
+    this.decisions.clear();
+    
+    for (const player of this.players.values()) {
+      player.hasDecided = false;
+    }
+    
+    return this.getGameState();
+  }
+
+  submitDecision(playerId, decision) {
+    const player = this.players.get(playerId);
+    if (!player || !this.isDeciding) return false;
+    
+    player.hasDecided = true;
+    this.decisions.set(playerId, decision);
+    
+    const allDecided = Array.from(this.players.values())
+      .filter(p => !p.isHost)
+      .every(p => p.hasDecided);
+    
+    if (allDecided) {
+      return this.calculateDecisionResult();
+    }
+    
+    return null;
+  }
+
+  calculateDecisionResult() {
+    let voteCount = 0;
+    let continueCount = 0;
+    
+    for (const decision of this.decisions.values()) {
+      if (decision) {
+        voteCount++;
+      } else {
+        continueCount++;
+      }
+    }
+    
+    const majorityWantsVote = voteCount > continueCount;
+    
+    return {
+      voteCount,
+      continueCount,
+      majorityWantsVote
+    };
+  }
+
   startVoting() {
     this.isVoting = true;
+    this.isDeciding = false;
     this.votes.clear();
     
     return this.getGameState();
@@ -147,7 +227,6 @@ class Game {
   submitVote(voterId, votedPlayerId) {
     this.votes.set(voterId, votedPlayerId);
     
-    // Sprawdź czy wszyscy już zagłosowali
     const allVoted = Array.from(this.players.values())
       .filter(p => !p.isHost)
       .every(p => this.votes.has(p.id));
@@ -160,13 +239,11 @@ class Game {
   }
 
   calculateVoteResults() {
-    // Zlicz głosy
     const voteCounts = new Map();
     for (const votedId of this.votes.values()) {
       voteCounts.set(votedId, (voteCounts.get(votedId) || 0) + 1);
     }
     
-    // Znajdź najwięcej głosów
     let maxVotes = 0;
     let votedOutId = null;
     
@@ -179,19 +256,15 @@ class Game {
     
     this.voteResults = voteCounts;
     
-    // Sprawdź czy impostor został wykryty
     const impostorDetected = votedOutId === this.impostorId;
     
-    // Aktualizuj wyniki
     if (impostorDetected) {
-      // Gracze wygrywają (oprócz impostora)
       for (const player of this.players.values()) {
         if (!player.isImpostor && !player.isHost) {
           player.score += 10;
         }
       }
     } else {
-      // Impostor wygrywa
       if (this.players.has(this.impostorId)) {
         this.players.get(this.impostorId).score += 20;
       }
@@ -207,26 +280,37 @@ class Game {
   nextRound() {
     this.currentRound++;
     this.isVoting = false;
+    this.isDeciding = false;
     
-    // Reset stanu dla nowej rundy
     for (const player of this.players.values()) {
       player.hasSubmitted = false;
       player.association = '';
+      player.hasDecided = false;
     }
     
     this.associations.clear();
     this.votes.clear();
     this.voteResults.clear();
+    this.decisions.clear();
     
-    // Losuj nowe hasło i podpowiedź
-    const randomIndex = Math.floor(Math.random() * wordPairs.length);
-    this.word = wordPairs[randomIndex].word;
-    this.hint = wordPairs[randomIndex].hint;
+    this.currentWordPair = this.getRandomWordPair();
+    this.word = this.currentWordPair.word;
+    this.hint = this.currentWordPair.hint;
     
     return this.getGameState();
   }
 
   getGameState(playerId = null) {
+    const associationsWithNames = Array.from(this.associations.entries()).map(([id, association]) => {
+      const player = this.players.get(id);
+      return {
+        playerId: id,
+        playerName: player ? player.name : 'Nieznany',
+        association: association,
+        isImpostor: player ? player.isImpostor : false
+      };
+    });
+
     const state = {
       code: this.code,
       word: this.word,
@@ -236,26 +320,27 @@ class Game {
       currentRound: this.currentRound,
       isPlaying: this.isPlaying,
       isVoting: this.isVoting,
+      isDeciding: this.isDeciding,
       players: Array.from(this.players.values()).map(p => ({
         id: p.id,
         name: p.name,
         score: p.score,
-        isImpostor: p.isImpostor && this.isPlaying, // Pokazuj tylko podczas gry
+        isImpostor: p.isImpostor && this.isPlaying,
         isHost: p.isHost,
         hasSubmitted: p.hasSubmitted,
-        association: this.isVoting ? p.association : '' // Pokazuj tylko podczas głosowania
+        hasDecided: p.hasDecided,
+        association: this.isVoting || this.isDeciding ? p.association : ''
       })),
-      associations: this.isVoting ? Array.from(this.associations.entries()) : [],
+      associations: associationsWithNames,
       votes: Array.from(this.votes.entries()),
       voteResults: Array.from(this.voteResults.entries()),
+      decisions: Array.from(this.decisions.entries()),
       impostorId: this.impostorId
     };
     
-    // Jeśli podano playerId, dostosuj widok dla tego gracza
     if (playerId) {
       const player = this.players.get(playerId);
       if (player) {
-        // Jeśli gracz jest impostorem, pokaż mu podpowiedź zamiast hasła
         if (player.isImpostor && this.isPlaying) {
           state.playerWord = this.hint;
           state.isImpostor = true;
@@ -278,7 +363,6 @@ class Game {
   }
 }
 
-// Generowanie kodu gry
 function generateGameCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = '';
@@ -288,31 +372,25 @@ function generateGameCode() {
   return code;
 }
 
-// Socket.io połączenia
 io.on('connection', (socket) => {
   console.log('Nowe połączenie:', socket.id);
   
   socket.on('createGame', (data) => {
-    const { playerName, word, hint, rounds, roundTime } = data;
+    const { playerName, rounds, roundTime } = data;
     
-    // Generuj unikalny kod gry
     let code;
     do {
       code = generateGameCode();
     } while (games.has(code));
     
-    // Utwórz nową grę
-    const game = new Game(code, socket.id, word, hint, rounds, roundTime);
+    const game = new Game(code, socket.id, rounds, roundTime);
     games.set(code, game);
     
-    // Dodaj hosta jako gracza
     game.addPlayer(socket.id, playerName || 'Host');
     
-    // Dołącz socket do pokoju
     socket.join(code);
     socket.gameCode = code;
     
-    // Wyślij kod gry do hosta
     socket.emit('gameCreated', { 
       code,
       gameState: game.getGameState(socket.id)
@@ -336,19 +414,15 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Dodaj gracza do gry
     const player = game.addPlayer(socket.id, playerName);
     
-    // Dołącz socket do pokoju
     socket.join(code);
     socket.gameCode = code;
     
-    // Wyślij potwierdzenie dołączania
     socket.emit('gameJoined', { 
       gameState: game.getGameState(socket.id)
     });
     
-    // Powiadom wszystkich w pokoju o nowym graczu
     io.to(code).emit('playerJoined', {
       player,
       gameState: game.getGameState()
@@ -363,19 +437,15 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    // Sprawdź czy to host
     if (socket.id !== game.hostId) return;
     
-    // Sprawdź czy jest wystarczająco graczy (min. 3 włącznie z hostem)
     if (game.players.size < 3) {
       socket.emit('error', { message: 'Potrzeba co najmniej 3 graczy aby rozpocząć grę' });
       return;
     }
     
-    // Rozpocznij grę
     game.startGame();
     
-    // Powiadom wszystkich w pokoju
     io.to(gameCode).emit('gameStarted', {
       gameState: game.getGameState()
     });
@@ -390,24 +460,56 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    if (!game.isPlaying || game.isVoting) return;
+    if (!game.isPlaying || game.isVoting || game.isDeciding) return;
     
-    // Zapisz skojarzenie
     const allSubmitted = game.submitAssociation(socket.id, association);
     
-    // Powiadom wszystkich o zaktualizowanym stanie
     io.to(gameCode).emit('associationSubmitted', {
       playerId: socket.id,
       gameState: game.getGameState()
     });
     
-    // Jeśli wszyscy już wysłali, rozpocznij głosowanie
     if (allSubmitted) {
       setTimeout(() => {
-        game.startVoting();
-        io.to(gameCode).emit('votingStarted', {
+        game.startDecisionPhase();
+        io.to(gameCode).emit('decisionPhaseStarted', {
           gameState: game.getGameState()
         });
+      }, 1000);
+    }
+  });
+  
+  socket.on('submitDecision', (data) => {
+    const { decision } = data;
+    const gameCode = socket.gameCode;
+    if (!gameCode || !games.has(gameCode)) return;
+    
+    const game = games.get(gameCode);
+    
+    if (!game.isPlaying || !game.isDeciding) return;
+    
+    const decisionResult = game.submitDecision(socket.id, decision);
+    
+    io.to(gameCode).emit('decisionSubmitted', {
+      playerId: socket.id,
+      gameState: game.getGameState()
+    });
+    
+    if (decisionResult) {
+      setTimeout(() => {
+        if (decisionResult.majorityWantsVote) {
+          game.startVoting();
+          io.to(gameCode).emit('votingStarted', {
+            decisionResult,
+            gameState: game.getGameState()
+          });
+        } else {
+          game.nextRound();
+          io.to(gameCode).emit('nextRoundStarted', {
+            decisionResult,
+            gameState: game.getGameState()
+          });
+        }
       }, 1000);
     }
   });
@@ -421,16 +523,13 @@ io.on('connection', (socket) => {
     
     if (!game.isPlaying || !game.isVoting) return;
     
-    // Zapisz głos
     const voteResults = game.submitVote(socket.id, votedPlayerId);
     
-    // Powiadom wszystkich o zaktualizowanym stanie
     io.to(gameCode).emit('voteSubmitted', {
       voterId: socket.id,
       gameState: game.getGameState()
     });
     
-    // Jeśli wszyscy już zagłosowali, pokaż wyniki
     if (voteResults) {
       setTimeout(() => {
         io.to(gameCode).emit('voteResults', {
@@ -447,28 +546,22 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    // Sprawdź czy to host
     if (socket.id !== game.hostId) return;
     
-    // Sprawdź czy można przejść do następnej rundy
     if (!game.isPlaying || game.currentRound >= game.rounds) {
-      // Koniec gry
       io.to(gameCode).emit('gameEnded', {
         gameState: game.getGameState()
       });
       
-      // Usuń grę po chwili
       setTimeout(() => {
         games.delete(gameCode);
-      }, 60000); // 1 minuta
+      }, 60000);
       
       return;
     }
     
-    // Przejdź do następnej rundy
     game.nextRound();
     
-    // Powiadom wszystkich w pokoju
     io.to(gameCode).emit('nextRoundStarted', {
       gameState: game.getGameState()
     });
@@ -480,28 +573,25 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    // Sprawdź czy to host
     if (socket.id !== game.hostId) return;
     
-    // Restart gry
     game.currentRound = 0;
     game.isPlaying = false;
     game.isVoting = false;
+    game.isDeciding = false;
     
-    // Zresetuj wyniki graczy
     for (const player of game.players.values()) {
       player.score = 0;
       player.isImpostor = false;
       player.hasSubmitted = false;
       player.association = '';
+      player.hasDecided = false;
     }
     
-    // Losuj nowe hasło
-    const randomIndex = Math.floor(Math.random() * wordPairs.length);
-    game.word = wordPairs[randomIndex].word;
-    game.hint = wordPairs[randomIndex].hint;
+    game.currentWordPair = game.getRandomWordPair();
+    game.word = game.currentWordPair.word;
+    game.hint = game.currentWordPair.hint;
     
-    // Powiadom wszystkich
     io.to(gameCode).emit('gameRestarted', {
       gameState: game.getGameState()
     });
@@ -516,20 +606,16 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    // Usuń gracza z gry
     const gameEnded = game.removePlayer(socket.id);
     
     if (gameEnded) {
-      // Host wyszedł - zakończ grę
       io.to(gameCode).emit('hostDisconnected');
       games.delete(gameCode);
       console.log(`Gra zakończona: ${gameCode} (host wyszedł)`);
     } else if (game.players.size === 0) {
-      // Wszyscy wyszli - usuń grę
       games.delete(gameCode);
       console.log(`Gra usunięta: ${gameCode} (brak graczy)`);
     } else {
-      // Powiadom pozostałych graczy
       io.to(gameCode).emit('playerLeft', {
         playerId: socket.id,
         gameState: game.getGameState()
