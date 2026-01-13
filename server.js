@@ -3,163 +3,20 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 
-// Import systemu autentykacji
-const auth = require('./auth');
-const { 
-    users, stats, sessions, validateSession, createSession,
-    registerUser, loginUser, logoutUser, updateUser, updateStats,
-    addFriend, acceptFriendRequest, getFriends, getFriendRequests,
-    getLeaderboard, findUserById, findUserByUsername, saveData
-} = auth;
-
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
-
-// Middleware do parsowania JSON
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Serwowanie plików statycznych
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-// API Endpoints
-app.post('/api/register', (req, res) => {
-    const { username, password, email } = req.body;
-    const result = registerUser(username, password, email);
-    res.json(result);
-});
-
-app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    const result = loginUser(username, password);
-    res.json(result);
-});
-
-app.post('/api/logout', (req, res) => {
-    const { sessionId } = req.body;
-    logoutUser(sessionId);
-    res.json({ success: true });
-});
-
-app.post('/api/validate-session', (req, res) => {
-    const { sessionId } = req.body;
-    const session = validateSession(sessionId);
-    
-    if (!session) {
-        res.json({ valid: false });
-        return;
-    }
-    
-    const user = findUserById(session.userId);
-    const userStats = stats.get(session.userId);
-    
-    res.json({
-        valid: true,
-        user: {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            settings: user.settings,
-            friends: user.friends,
-            friendRequests: user.friendRequests
-        },
-        stats: userStats
-    });
-});
-
-app.post('/api/update-profile', (req, res) => {
-    const { sessionId, updates } = req.body;
-    const session = validateSession(sessionId);
-    
-    if (!session) {
-        res.status(401).json({ success: false, error: 'Nieautoryzowany' });
-        return;
-    }
-    
-    const result = updateUser(session.userId, updates);
-    res.json(result);
-});
-
-app.post('/api/add-friend', (req, res) => {
-    const { sessionId, friendUsername } = req.body;
-    const session = validateSession(sessionId);
-    
-    if (!session) {
-        res.status(401).json({ success: false, error: 'Nieautoryzowany' });
-        return;
-    }
-    
-    const result = addFriend(session.userId, friendUsername);
-    res.json(result);
-});
-
-app.post('/api/accept-friend', (req, res) => {
-    const { sessionId, friendId } = req.body;
-    const session = validateSession(sessionId);
-    
-    if (!session) {
-        res.status(401).json({ success: false, error: 'Nieautoryzowany' });
-        return;
-    }
-    
-    const result = acceptFriendRequest(session.userId, friendId);
-    res.json(result);
-});
-
-app.get('/api/friends/:sessionId', (req, res) => {
-    const session = validateSession(req.params.sessionId);
-    
-    if (!session) {
-        res.status(401).json({ error: 'Nieautoryzowany' });
-        return;
-    }
-    
-    const friends = getFriends(session.userId);
-    const requests = getFriendRequests(session.userId);
-    
-    res.json({ friends, requests });
-});
-
-app.get('/api/leaderboard', (req, res) => {
-    const leaderboard = getLeaderboard();
-    res.json(leaderboard);
-});
-
-app.get('/api/user/:userId', (req, res) => {
-    const user = findUserById(req.params.userId);
-    if (!user) {
-        res.status(404).json({ error: 'Użytkownik nie znaleziony' });
-        return;
-    }
-    
-    const userStats = stats.get(req.params.userId);
-    const friends = getFriends(req.params.userId);
-    
-    res.json({
-        user: {
-            id: user.id,
-            username: user.username,
-            createdAt: user.createdAt,
-            lastLogin: user.lastLogin,
-            isOnline: user.isOnline
-        },
-        stats: userStats,
-        friends: friends.slice(0, 10) // Pierwszych 10 znajomych
-    });
-});
-
-// Mapowanie socket.id do userId
-const socketToUser = new Map();
-const userToSocket = new Map();
 
 // Rozszerzona lista haseł
 const wordPairs = [
@@ -203,7 +60,6 @@ class Game {
   constructor(code, hostId, rounds, roundTime, numImpostors, gameMode) {
     this.code = code;
     this.hostId = hostId;
-    this.hostUserId = socketToUser.get(hostId); // Dodane: userId hosta
     this.rounds = parseInt(rounds);
     this.roundTime = parseInt(roundTime);
     this.numImpostors = parseInt(numImpostors) || 1;
@@ -230,9 +86,6 @@ class Game {
     this.word = this.currentWordPair.word;
     this.hint = this.currentWordPair.hint;
     this.wordGuessed = false; // Czy impostor odgadł hasło
-    
-    // Dodane: lista zaproszonych znajomych
-    this.invitedFriends = [];
   }
 
   getRandomWordPair() {
@@ -240,10 +93,9 @@ class Game {
     return wordPairs[randomIndex];
   }
 
-  addPlayer(playerId, name, userId = null) {
+  addPlayer(playerId, name) {
     this.players.set(playerId, {
       id: playerId,
-      userId: userId, // Dodane: userId
       name: name,
       score: 0,
       isImpostor: false,
@@ -612,7 +464,6 @@ class Game {
       wordGuessed: this.wordGuessed,
       players: Array.from(this.players.values()).map(p => ({
         id: p.id,
-        userId: p.userId,
         name: p.name,
         score: p.score,
         isImpostor: p.isImpostor && this.isPlaying,
@@ -647,7 +498,6 @@ class Game {
         
         state.player = {
           id: player.id,
-          userId: player.userId,
           name: player.name,
           score: player.score,
           isImpostor: player.isImpostor,
@@ -657,58 +507,6 @@ class Game {
     }
     
     return state;
-  }
-
-  endGame() {
-    const results = {
-      players: Array.from(this.players.values()).map(player => ({
-        userId: player.userId,
-        name: player.name,
-        score: player.score,
-        isImpostor: player.isImpostor,
-        won: this.calculatePlayerWin(player.id)
-      })),
-      word: this.word,
-      hint: this.hint,
-      roundsPlayed: this.currentRound,
-      totalRounds: this.rounds
-    };
-    
-    // Aktualizuj statystyki graczy
-    results.players.forEach(player => {
-      if (player.userId) {
-        updateStats(player.userId, {
-          score: player.score,
-          won: player.won,
-          wasImpostor: player.isImpostor
-        });
-      }
-    });
-    
-    return results;
-  }
-
-  calculatePlayerWin(playerId) {
-    const player = this.players.get(playerId);
-    if (!player) return false;
-    
-    if (player.isImpostor) {
-      // Impostor wygrywa jeśli nie został wykryty lub odgadł hasło
-      if (this.wordGuessed) return true;
-      
-      // Sprawdź czy impostor został wykryty w głosowaniu
-      const voteResult = Array.from(this.voteResults.entries()).find(([id, votes]) => id === playerId);
-      if (voteResult && voteResult[1] > 0) {
-        return false; // Został wykryty
-      }
-      return true; // Nie został wykryty
-    } else {
-      // Gracz wygrywa jeśli impostor został wykryty
-      const anyImpostorDetected = Array.from(this.voteResults.entries()).some(([id, votes]) => {
-        return this.impostorIds.includes(id) && votes > 0;
-      });
-      return anyImpostorDetected;
-    }
   }
 }
 
@@ -724,46 +522,8 @@ function generateGameCode() {
 io.on('connection', (socket) => {
   console.log('Nowe połączenie:', socket.id);
   
-  socket.on('authenticate', (data) => {
-    const { sessionId } = data;
-    const session = validateSession(sessionId);
-    
-    if (!session) {
-      socket.emit('authError', { message: 'Nieprawidłowa sesja' });
-      return;
-    }
-    
-    const user = findUserById(session.userId);
-    if (!user) {
-      socket.emit('authError', { message: 'Użytkownik nie znaleziony' });
-      return;
-    }
-    
-    // Mapowanie socket.id do userId
-    socketToUser.set(socket.id, user.id);
-    userToSocket.set(user.id, socket.id);
-    
-    // Ustaw dane użytkownika w sockecie
-    socket.userId = user.id;
-    socket.username = user.username;
-    
-    // Ustaw użytkownika jako online
-    user.isOnline = true;
-    saveData();
-    
-    socket.emit('authenticated', {
-      userId: user.id,
-      username: user.username,
-      stats: stats.get(user.id)
-    });
-    
-    console.log(`Użytkownik uwierzytelniony: ${user.username} (${socket.id})`);
-  });
-  
   socket.on('createGame', (data) => {
-    const { rounds, roundTime, numImpostors, gameMode } = data;
-    const playerName = socket.username || 'Gracz';
-    const userId = socket.userId;
+    const { playerName, rounds, roundTime, numImpostors, gameMode } = data;
     
     let code;
     do {
@@ -773,7 +533,7 @@ io.on('connection', (socket) => {
     const game = new Game(code, socket.id, rounds, roundTime, numImpostors, gameMode);
     games.set(code, game);
     
-    game.addPlayer(socket.id, playerName, userId);
+    game.addPlayer(socket.id, playerName || 'Host');
     
     socket.join(code);
     socket.gameCode = code;
@@ -783,12 +543,11 @@ io.on('connection', (socket) => {
       gameState: game.getGameState(socket.id)
     });
     
-    console.log(`Gra utworzona: ${code} przez ${socket.username || socket.id}`);
+    console.log(`Gra utworzona: ${code} przez ${socket.id}`);
   });
   
   socket.on('joinGame', (data) => {
     const { code, playerName } = data;
-    const userId = socket.userId;
     
     if (!games.has(code)) {
       socket.emit('error', { message: 'Gra o podanym kodzie nie istnieje' });
@@ -802,7 +561,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    const player = game.addPlayer(socket.id, playerName || socket.username, userId);
+    const player = game.addPlayer(socket.id, playerName);
     
     socket.join(code);
     socket.gameCode = code;
@@ -816,98 +575,7 @@ io.on('connection', (socket) => {
       gameState: game.getGameState()
     });
     
-    console.log(`Gracz dołączył: ${player.name} do gry ${code}`);
-  });
-  
-  // Nowy event: zaproś znajomego
-  socket.on('inviteFriend', (data) => {
-    const { friendId, gameCode } = data;
-    
-    if (!games.has(gameCode)) {
-      socket.emit('error', { message: 'Gra nie istnieje' });
-      return;
-    }
-    
-    const game = games.get(gameCode);
-    if (socket.id !== game.hostId) {
-      socket.emit('error', { message: 'Tylko host może zapraszać' });
-      return;
-    }
-    
-    const friendSocketId = userToSocket.get(friendId);
-    if (!friendSocketId) {
-      socket.emit('error', { message: 'Znajomy jest offline' });
-      return;
-    }
-    
-    const friendUser = findUserById(friendId);
-    const hostUser = findUserById(socket.userId);
-    
-    // Dodaj do listy zaproszonych
-    game.invitedFriends.push(friendId);
-    
-    // Wyślij zaproszenie do znajomego
-    io.to(friendSocketId).emit('friendInvitation', {
-      from: hostUser.username,
-      fromId: hostUser.id,
-      gameCode: gameCode,
-      gameSettings: {
-        rounds: game.rounds,
-        roundTime: game.roundTime,
-        numImpostors: game.numImpostors,
-        gameMode: game.gameMode
-      },
-      players: Array.from(game.players.values()).map(p => p.name)
-    });
-    
-    socket.emit('inviteSent', { 
-      success: true, 
-      friendName: friendUser.username 
-    });
-    
-    console.log(`Zaproszenie wysłane do ${friendUser.username} do gry ${gameCode}`);
-  });
-  
-  // Nowy event: automatyczne dołączenie przez zaproszenie
-  socket.on('joinViaInvite', (data) => {
-    const { gameCode } = data;
-    const userId = socket.userId;
-    
-    if (!games.has(gameCode)) {
-      socket.emit('error', { message: 'Gra nie istnieje' });
-      return;
-    }
-    
-    const game = games.get(gameCode);
-    
-    // Sprawdź czy użytkownik jest na liście zaproszonych
-    if (!game.invitedFriends.includes(userId)) {
-      socket.emit('error', { message: 'Nie zostałeś zaproszony do tej gry' });
-      return;
-    }
-    
-    // Dołącz do gry
-    const player = game.addPlayer(socket.id, socket.username, userId);
-    
-    socket.join(gameCode);
-    socket.gameCode = gameCode;
-    
-    // Usuń z listy zaproszonych
-    const inviteIndex = game.invitedFriends.indexOf(userId);
-    if (inviteIndex > -1) {
-      game.invitedFriends.splice(inviteIndex, 1);
-    }
-    
-    socket.emit('gameJoined', { 
-      gameState: game.getGameState(socket.id)
-    });
-    
-    io.to(gameCode).emit('playerJoined', {
-      player,
-      gameState: game.getGameState()
-    });
-    
-    console.log(`Gracz dołączył przez zaproszenie: ${player.name} do gry ${gameCode}`);
+    console.log(`Gracz dołączył: ${playerName} do gry ${code}`);
   });
   
   socket.on('startGame', () => {
@@ -1103,10 +771,7 @@ io.on('connection', (socket) => {
     if (socket.id !== game.hostId) return;
     
     if (!game.isPlaying || game.currentRound >= game.rounds) {
-      // Zakończ grę i wyślij wyniki
-      const gameResults = game.endGame();
       io.to(gameCode).emit('gameEnded', {
-        results: gameResults,
         gameState: game.getGameState()
       });
       
@@ -1161,21 +826,6 @@ io.on('connection', (socket) => {
   
   socket.on('disconnect', () => {
     const gameCode = socket.gameCode;
-    const userId = socket.userId;
-    
-    // Ustaw użytkownika jako offline
-    if (userId) {
-      const user = findUserById(userId);
-      if (user) {
-        user.isOnline = false;
-        saveData();
-      }
-      
-      userToSocket.delete(userId);
-    }
-    
-    socketToUser.delete(socket.id);
-    
     if (!gameCode || !games.has(gameCode)) {
       console.log('Rozłączono:', socket.id);
       return;
@@ -1186,14 +836,7 @@ io.on('connection', (socket) => {
     const gameEnded = game.removePlayer(socket.id);
     
     if (gameEnded) {
-      // Zakończ grę i zapisz statystyki
-      const gameResults = game.endGame();
-      io.to(gameCode).emit('gameEnded', {
-        reason: 'hostDisconnected',
-        results: gameResults,
-        gameState: game.getGameState()
-      });
-      
+      io.to(gameCode).emit('hostDisconnected');
       games.delete(gameCode);
       console.log(`Gra zakończona: ${gameCode} (host wyszedł)`);
     } else if (game.players.size === 0) {
@@ -1212,5 +855,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
-  console.log(`System autentykacji: ${users.size} zarejestrowanych użytkowników`);
 });
