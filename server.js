@@ -127,12 +127,11 @@ class Game {
     this.currentRound = 1;
     this.wordGuessed = false;
     
-    // Wybierz impostorów
+    // Wybierz impostorów (host NIE może być impostorem)
     this.impostorIds = [];
     const nonHostPlayers = Array.from(this.players.values()).filter(p => !p.isHost);
     
     if (nonHostPlayers.length >= this.numImpostors) {
-      // Losowo wybierz impostorów
       const shuffled = [...nonHostPlayers].sort(() => 0.5 - Math.random());
       for (let i = 0; i < this.numImpostors && i < shuffled.length; i++) {
         this.impostorIds.push(shuffled[i].id);
@@ -169,6 +168,7 @@ class Game {
   }
 
   prepareTurnOrder() {
+    // Host NIE jest w kolejce - tylko obserwuje
     const nonHostPlayers = Array.from(this.players.values()).filter(p => !p.isHost);
     this.turnOrder = [...nonHostPlayers].sort(() => 0.5 - Math.random()).map(p => p.id);
     this.currentTurnIndex = 0;
@@ -209,14 +209,14 @@ class Game {
     
     if (this.gameMode === 'sequential') {
       const allCompleted = Array.from(this.players.values())
-        .filter(p => !p.isHost)
+        .filter(p => !p.isHost) // Host nie składa skojarzeń w trybie sequential
         .every(p => p.turnCompleted);
       
       return allCompleted;
     } else {
+      // W trybie simultaneous host TAKŻE składa skojarzenie
       const allSubmitted = Array.from(this.players.values())
-        .filter(p => !p.isHost)
-        .every(p => p.hasSubmitted);
+        .every(p => p.hasSubmitted || p.isHost); // Host też musi złożyć
       
       return allSubmitted;
     }
@@ -267,6 +267,7 @@ class Game {
     player.hasDecided = true;
     this.decisions.set(playerId, decision);
     
+    // Host NIE głosuje w decyzji - tylko gracze
     const allDecided = Array.from(this.players.values())
       .filter(p => !p.isHost)
       .every(p => p.hasDecided);
@@ -282,11 +283,15 @@ class Game {
     let voteCount = 0;
     let continueCount = 0;
     
-    for (const decision of this.decisions.values()) {
-      if (decision) {
-        voteCount++;
-      } else {
-        continueCount++;
+    // Liczymy tylko głosy graczy (nie hosta)
+    for (const [playerId, decision] of this.decisions.entries()) {
+      const player = this.players.get(playerId);
+      if (player && !player.isHost) {
+        if (decision) {
+          voteCount++;
+        } else {
+          continueCount++;
+        }
       }
     }
     
@@ -311,7 +316,7 @@ class Game {
     this.votes.set(voterId, votedPlayerId);
     
     const allVoted = Array.from(this.players.values())
-      .filter(p => !p.isHost)
+      .filter(p => !p.isHost) // Host nie głosuje
       .every(p => this.votes.has(p.id));
     
     if (allVoted) {
@@ -409,7 +414,8 @@ class Game {
       players: Array.from(this.players.values()).map(p => ({
         id: p.id,
         name: p.name,
-        isImpostor: p.isImpostor && this.isPlaying,
+        // POKAZUJEMY TYLKO WŁASNĄ ROLĘ - impostor widoczny tylko dla siebie
+        isImpostor: p.isImpostor && (playerId === p.id || !this.isPlaying),
         isHost: p.isHost,
         hasSubmitted: p.hasSubmitted,
         hasDecided: p.hasDecided,
@@ -626,7 +632,7 @@ io.on('connection', (socket) => {
   });
   
   socket.on('submitDecision', (data) => {
-    const { decision } = data; // Usunięto keepSameWord - tylko host może wybrać
+    const { decision } = data;
     const gameCode = socket.gameCode;
     if (!gameCode || !games.has(gameCode)) return;
     
@@ -650,7 +656,6 @@ io.on('connection', (socket) => {
             gameState: game.getGameState()
           });
         } else {
-          // Większość chce grać dalej - czekaj na decyzję hosta o haśle
           io.to(gameCode).emit('waitingForHostDecision', {
             decisionResult,
             gameState: game.getGameState()
@@ -660,7 +665,6 @@ io.on('connection', (socket) => {
     }
   });
   
-  // Nowy event: host decyduje czy zachować hasło
   socket.on('hostDecision', (data) => {
     const { keepSameWord } = data;
     const gameCode = socket.gameCode;
