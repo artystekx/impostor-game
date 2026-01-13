@@ -817,3 +817,160 @@ small {
     border-color: #4ec84e;
     color: #8ffb8f;
 }
+
+/* Dodaj te style na końcu istniejącego pliku style.css */
+
+/* Nowe style dla zaktualizowanej gry */
+
+.game-mode-badge {
+    background: rgba(78, 84, 200, 0.2);
+    color: #8f94fb;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    border: 1px solid #4e54c8;
+}
+
+.impostor-badge {
+    background: rgba(200, 78, 78, 0.2);
+    color: #fb8f8f;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    border: 1px solid #c84e4e;
+}
+
+.turn-info {
+    text-align: center;
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(15, 21, 48, 0.5);
+    border-radius: 10px;
+    border: 2px solid #4e54c8;
+}
+
+.current-turn {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 15px 0;
+    color: #ffffff;
+}
+
+.turn-timer {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #8f94fb;
+    margin-top: 10px;
+}
+
+.guess-input-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+#guess-input, #voting-guess-input {
+    flex-grow: 1;
+    font-size: 1.1rem;
+}
+
+.warning-message {
+    background: rgba(251, 191, 143, 0.2);
+    border: 1px solid #fb8f8f;
+    color: #fb8f8f;
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.keep-word-option {
+    background: rgba(78, 84, 200, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #4e54c8;
+}
+
+.keep-word-option label {
+    color: #b0b0d0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.keep-word-option input[type="checkbox"] {
+    width: auto;
+    transform: scale(1.2);
+}
+
+/* Poprawki dla asocjacji */
+.association-card .player-name {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.association-card .association-text {
+    font-size: 1.3rem;
+    font-weight: bold;
+    text-align: center;
+    color: #ffffff;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Styl dla braku skojarzenia */
+.no-association {
+    color: #888888 !important;
+    font-style: italic !important;
+}
+
+/* Informacje w sidebarze */
+#game-info-sidebar p {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#game-info-sidebar p:last-child {
+    border-bottom: none;
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+    .round-info {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+    
+    .turn-info {
+        padding: 15px;
+    }
+    
+    .current-turn {
+        font-size: 1.2rem;
+    }
+    
+    .turn-timer {
+        font-size: 2rem;
+    }
+    
+    .guess-input-container {
+        flex-direction: column;
+    }
+    
+    #vote-impostor-btn, #continue-game-btn {
+        margin: 10px 0;
+        width: 100%;
+    }
+}
