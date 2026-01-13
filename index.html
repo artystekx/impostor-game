@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impostor - Gra online</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-user-secret"></i> Gra Impostor</h1>
+            <p class="subtitle">Wszyscy dostają hasło, impostor tylko podpowiedź. Znajdź oszusta po skojarzeniach!</p>
+        </header>
+        
+        <!-- Ekran startowy -->
+        <div id="start-screen" class="screen active">
+            <div class="panel">
+                <div class="logo">
+                    <i class="fas fa-user-secret"></i>
+                </div>
+                <h2>Witaj w grze Impostor!</h2>
+                <p>Jedna osoba tworzy pokój i ustawia hasło. Gracze dołączają przez kod. Jeden z graczy jest impostorem - widzi tylko podpowiedź do hasła!</p>
+                <p>W każdej rundzie gracze piszą skojarzenie z hasłem. Impostor musi się ukrywać. Po rundach następuje głosowanie - kto jest impostorem?</p>
+                
+                <div class="button-group">
+                    <button id="create-game-btn" class="btn btn-primary">
+                        <i class="fas fa-plus-circle"></i> Stwórz nową grę
+                    </button>
+                    <button id="join-game-btn" class="btn btn-secondary">
+                        <i class="fas fa-sign-in-alt"></i> Dołącz do gry
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran tworzenia gry -->
+        <div id="create-screen" class="screen">
+            <div class="panel">
+                <h2><i class="fas fa-cogs"></i> Tworzenie nowej gry</h2>
+                <p>Ustaw hasło i podpowiedź dla impostora. Określ liczbę rund.</p>
+                
+                <div class="input-group">
+                    <label for="player-name-host">
+                        <i class="fas fa-user"></i> Twój pseudonim:
+                    </label>
+                    <input type="text" id="player-name-host" placeholder="np. Marek" value="Host">
+                </div>
+                
+                <div class="input-group">
+                    <label for="game-word">
+                        <i class="fas fa-key"></i> Hasło (widzą wszyscy oprócz impostora):
+                    </label>
+                    <input type="text" id="game-word" placeholder="np. Kot, Morze, Samochód" value="Kot">
+                </div>
+                
+                <div class="input-group">
+                    <label for="game-hint">
+                        <i class="fas fa-lightbulb"></i> Podpowiedź dla impostora:
+                    </label>
+                    <input type="text" id="game-hint" placeholder="np. Zwierzę, Woda, Pojazd" value="Zwierzę">
+                    <small>Tylko impostor zobaczy tę podpowiedź zamiast hasła</small>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="rounds-count">
+                            <i class="fas fa-redo"></i> Liczba rund:
+                        </label>
+                        <select id="rounds-count">
+                            <option value="3">3 rundy</option>
+                            <option value="4" selected>4 rundy</option>
+                            <option value="5">5 rundy</option>
+                            <option value="6">6 rund</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="round-time">
+                            <i class="fas fa-clock"></i> Czas na rundę:
+                        </label>
+                        <select id="round-time">
+                            <option value="30">30 sekund</option>
+                            <option value="45" selected>45 sekund</option>
+                            <option value="60">60 sekund</option>
+                            <option value="90">90 sekund</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="create-game-final-btn" class="btn btn-primary">
+                        <i class="fas fa-play-circle"></i> Stwórz grę
+                    </button>
+                    <button id="back-to-start-from-create" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Wróć
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran dołączania do gry -->
+        <div id="join-screen" class="screen">
+            <div class="panel">
+                <h2><i class="fas fa-sign-in-alt"></i> Dołącz do gry</h2>
+                <p>Wpisz kod gry, który otrzymałeś od prowadzącego.</p>
+                
+                <div class="input-group">
+                    <label for="game-code-input">
+                        <i class="fas fa-qrcode"></i> Kod gry:
+                    </label>
+                    <input type="text" id="game-code-input" placeholder="Wpisz 6-cyfrowy kod" maxlength="6" style="text-transform: uppercase;">
+                </div>
+                
+                <div class="input-group">
+                    <label for="player-name-input">
+                        <i class="fas fa-user"></i> Twój pseudonim:
+                    </label>
+                    <input type="text" id="player-name-input" placeholder="Wpisz swój pseudonim">
+                </div>
+                
+                <div class="button-group">
+                    <button id="join-game-final-btn" class="btn btn-primary">
+                        <i class="fas fa-gamepad"></i> Dołącz do gry
+                    </button>
+                    <button id="back-to-start-from-join" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Wróć
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran oczekiwania na graczy (prowadzący) -->
+        <div id="waiting-host-screen" class="screen">
+            <div class="panel">
+                <h2><i class="fas fa-users"></i> Oczekiwanie na graczy</h2>
+                <p>Podaj ten kod graczom, aby mogli dołączyć:</p>
+                
+                <div id="game-code-display" class="code-display">
+                    <span id="code-text">ABCDEF</span>
+                    <button id="copy-code-btn" class="btn-icon" title="Skopiuj kod">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                
+                <div class="game-info">
+                    <p><strong>Hasło:</strong> <span id="waiting-word">Kot</span></p>
+                    <p><strong>Podpowiedź dla impostora:</strong> <span id="waiting-hint">Zwierzę</span></p>
+                    <p><strong>Rundy:</strong> <span id="waiting-rounds">4</span> | <strong>Czas na rundę:</strong> <span id="waiting-time">45</span>s</p>
+                </div>
+                
+                <div class="players-section">
+                    <h3><i class="fas fa-user-friends"></i> Gracze w lobby (<span id="player-count">1</span>)</h3>
+                    <div id="players-list" class="players-list">
+                        <!-- Gracze będą dodawani dynamicznie -->
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="start-game-btn" class="btn btn-success" disabled>
+                        <i class="fas fa-play"></i> Rozpocznij grę (min. 3 graczy)
+                    </button>
+                    <button id="cancel-game-btn" class="btn btn-danger">
+                        <i class="fas fa-times"></i> Anuluj grę
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran oczekiwania na start (gracz) -->
+        <div id="waiting-player-screen" class="screen">
+            <div class="panel">
+                <h2><i class="fas fa-hourglass-half"></i> Oczekiwanie na rozpoczęcie gry</h2>
+                <p>Poczekaj, aż prowadzący rozpocznie grę...</p>
+                
+                <div class="game-info">
+                    <p><strong>Kod gry:</strong> <span id="waiting-game-code" class="code-small">ABCDEF</span></p>
+                    <p><strong>Liczba rund:</strong> <span id="waiting-player-rounds">4</span> | <strong>Czas na rundę:</strong> <span id="waiting-player-time">45</span>s</p>
+                </div>
+                
+                <div class="players-section">
+                    <h3><i class="fas fa-user-friends"></i> Gracze w lobby (<span id="waiting-player-count">1</span>)</h3>
+                    <div id="waiting-players-list" class="players-list">
+                        <!-- Gracze będą dodawani dynamicznie -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran gry -->
+        <div id="game-screen" class="screen">
+            <div class="panel">
+                <div class="game-header">
+                    <div class="game-info">
+                        <h3 id="current-game-name">Gra Impostor</h3>
+                        <div class="round-info">
+                            <span class="round-badge">Runda <span id="current-round">1</span>/<span id="total-rounds">4</span></span>
+                            <span class="time-badge" id="timer">45</span>
+                        </div>
+                    </div>
+                    
+                    <div id="player-role-display">
+                        <!-- Rola gracza będzie wyświetlana tutaj -->
+                    </div>
+                </div>
+                
+                <div class="word-section">
+                    <div class="word-label">
+                        <i class="fas fa-key"></i> Twoje hasło/podpowiedź:
+                    </div>
+                    <div id="word-display" class="word-display">
+                        Kot
+                    </div>
+                    <div id="role-hint" class="hint-text">
+                        <!-- Podpowiedź roli -->
+                    </div>
+                </div>
+                
+                <div id="association-section">
+                    <h3><i class="fas fa-comment-dots"></i> Napisz skojarzenie:</h3>
+                    <p>Wpisz słowo, które kojarzy Ci się z hasłem/podpowiedzią powyżej.</p>
+                    
+                    <div class="association-input-container">
+                        <input type="text" id="association-input" placeholder="Twoje skojarzenie...">
+                        <button id="submit-association-btn" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Wyślij
+                        </button>
+                    </div>
+                    
+                    <div id="submitted-message" class="success-message" style="display: none;">
+                        <i class="fas fa-check-circle"></i> Twoje skojarzenie zostało wysłane!
+                    </div>
+                </div>
+                
+                <div id="waiting-section" style="display: none;">
+                    <div class="waiting-message">
+                        <i class="fas fa-hourglass-half"></i>
+                        <h3>Oczekiwanie na innych graczy...</h3>
+                        <p>Wszyscy muszą wysłać swoje skojarzenia zanim przejdziemy dalej.</p>
+                        
+                        <div class="players-progress">
+                            <div id="progress-text">0/0 graczy gotowych</div>
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="voting-section" style="display: none;">
+                    <h3><i class="fas fa-vote-yea"></i> Głosowanie</h3>
+                    <p>Przeczytaj wszystkie skojarzenia i zagłosuj, kto twoim zdaniem jest impostorem.</p>
+                    
+                    <div id="associations-list" class="associations-list">
+                        <!-- Skojarzenia będą dodawane dynamicznie -->
+                    </div>
+                    
+                    <div class="vote-section">
+                        <h4>Zagłosuj na impostora:</h4>
+                        <div id="vote-options" class="vote-options">
+                            <!-- Opcje głosowania będą dodawane dynamicznie -->
+                        </div>
+                        
+                        <div id="voted-message" class="success-message" style="display: none;">
+                            <i class="fas fa-check-circle"></i> Twój głos został oddany!
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="results-section" style="display: none;">
+                    <div id="results-content">
+                        <!-- Wyniki głosowania będą dodawane dynamicznie -->
+                    </div>
+                    
+                    <div class="button-group" id="host-controls" style="display: none;">
+                        <button id="next-round-btn" class="btn btn-primary">
+                            <i class="fas fa-forward"></i> Następna runda
+                        </button>
+                        <button id="end-game-btn" class="btn btn-secondary">
+                            <i class="fas fa-stop"></i> Zakończ grę
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-trophy"></i> Wyniki</h3>
+                    <div id="scoreboard" class="scoreboard">
+                        <!-- Tabela wyników będzie dodawana dynamicznie -->
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-users"></i> Gracze (<span id="players-count">1</span>)</h3>
+                    <div id="game-players-list" class="players-list">
+                        <!-- Lista graczy w trakcie gry -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ekran wyników końcowych -->
+        <div id="final-results-screen" class="screen">
+            <div class="panel">
+                <div id="final-results-content">
+                    <!-- Wyniki końcowe będą dodawane dynamicznie -->
+                </div>
+                
+                <div class="button-group">
+                    <button id="play-again-btn" class="btn btn-primary">
+                        <i class="fas fa-redo"></i> Zagraj ponownie
+                    </button>
+                    <button id="back-to-menu-btn" class="btn btn-secondary">
+                        <i class="fas fa-home"></i> Powrót do menu
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Powiadomienie -->
+        <div id="notification" class="notification"></div>
+        
+        <!-- Status połączenia -->
+        <div id="connection-status" class="connection-status">
+            <i class="fas fa-circle"></i> <span id="status-text">Łączenie...</span>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
