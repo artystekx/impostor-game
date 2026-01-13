@@ -26,7 +26,7 @@ const wordPairs = [
   { word: "TELEFON", hint: "Urządzenie do komunikacji" },
   { word: "OKNO", hint: "Element budynku" },
   { word: "DRZEWO", hint: "Roślina" },
-  { word: "SŁOŃCE", hint: "Gwiazda" },
+  { word: "NIKODEM BEDOŁEK", hint: "Polonia Chodzież" },
   { word: "WODA", hint: "Płyn" },
   { word: "OGIEŃ", hint: "Żywioł" },
   { word: "ZAMEK", hint: "Budowla" },
@@ -85,6 +85,7 @@ class Game {
     this.word = this.currentWordPair.word;
     this.hint = this.currentWordPair.hint;
     this.wordGuessed = false;
+    this.guessFailed = false;
   }
 
   getRandomWordPair() {
@@ -126,13 +127,15 @@ class Game {
     this.isPlaying = true;
     this.currentRound = 1;
     this.wordGuessed = false;
+    this.guessFailed = false;
     
-    // Wybierz impostorów (host NIE może być impostorem)
+    // Wybierz impostorów (host też może być impostorem)
     this.impostorIds = [];
-    const nonHostPlayers = Array.from(this.players.values()).filter(p => !p.isHost);
+    const allPlayers = Array.from(this.players.values());
     
-    if (nonHostPlayers.length >= this.numImpostors) {
-      const shuffled = [...nonHostPlayers].sort(() => 0.5 - Math.random());
+    if (allPlayers.length >= this.numImpostors) {
+      // Losowo wybierz impostorów spośród WSZYSTKICH graczy (w tym hosta)
+      const shuffled = [...allPlayers].sort(() => 0.5 - Math.random());
       for (let i = 0; i < this.numImpostors && i < shuffled.length; i++) {
         this.impostorIds.push(shuffled[i].id);
         this.players.get(shuffled[i].id).isImpostor = true;
@@ -168,9 +171,9 @@ class Game {
   }
 
   prepareTurnOrder() {
-    // Host NIE jest w kolejce - tylko obserwuje
-    const nonHostPlayers = Array.from(this.players.values()).filter(p => !p.isHost);
-    this.turnOrder = [...nonHostPlayers].sort(() => 0.5 - Math.random()).map(p => p.id);
+    // Host też jest w kolejce w trybie sequential
+    const allPlayers = Array.from(this.players.values());
+    this.turnOrder = [...allPlayers].sort(() => 0.5 - Math.random()).map(p => p.id);
     this.currentTurnIndex = 0;
   }
 
@@ -209,14 +212,13 @@ class Game {
     
     if (this.gameMode === 'sequential') {
       const allCompleted = Array.from(this.players.values())
-        .filter(p => !p.isHost) // Host nie składa skojarzeń w trybie sequential
-        .every(p => p.turnCompleted);
+        .every(p => p.turnCompleted || p.isHost); // Host też składa skojarzenie
       
       return allCompleted;
     } else {
-      // W trybie simultaneous host TAKŻE składa skojarzenie
+      // W trybie simultaneous wszyscy (łącznie z hostem) składają skojarzenia
       const allSubmitted = Array.from(this.players.values())
-        .every(p => p.hasSubmitted || p.isHost); // Host też musi złożyć
+        .every(p => p.hasSubmitted);
       
       return allSubmitted;
     }
@@ -234,18 +236,21 @@ class Game {
     
     if (guessedCorrectly) {
       this.wordGuessed = true;
+      this.isPlaying = false; // Gra się kończy
       return {
         correct: true,
         guesserId: playerId,
         guesserName: player.name
       };
+    } else {
+      this.guessFailed = true;
+      this.isPlaying = false; // Gra się kończy
+      return {
+        correct: false,
+        guesserId: playerId,
+        guesserName: player.name
+      };
     }
-    
-    return {
-      correct: false,
-      guesserId: playerId,
-      guesserName: player.name
-    };
   }
 
   startDecisionPhase() {
@@ -267,9 +272,8 @@ class Game {
     player.hasDecided = true;
     this.decisions.set(playerId, decision);
     
-    // Host NIE głosuje w decyzji - tylko gracze
+    // Wszyscy gracze (łącznie z hostem) decydują
     const allDecided = Array.from(this.players.values())
-      .filter(p => !p.isHost)
       .every(p => p.hasDecided);
     
     if (allDecided) {
@@ -283,15 +287,11 @@ class Game {
     let voteCount = 0;
     let continueCount = 0;
     
-    // Liczymy tylko głosy graczy (nie hosta)
-    for (const [playerId, decision] of this.decisions.entries()) {
-      const player = this.players.get(playerId);
-      if (player && !player.isHost) {
-        if (decision) {
-          voteCount++;
-        } else {
-          continueCount++;
-        }
+    for (const decision of this.decisions.values()) {
+      if (decision) {
+        voteCount++;
+      } else {
+        continueCount++;
       }
     }
     
@@ -316,8 +316,7 @@ class Game {
     this.votes.set(voterId, votedPlayerId);
     
     const allVoted = Array.from(this.players.values())
-      .filter(p => !p.isHost) // Host nie głosuje
-      .every(p => this.votes.has(p.id));
+      .every(p => this.votes.has(p.id)); // Wszyscy głosują
     
     if (allVoted) {
       return this.calculateVoteResults();
@@ -357,6 +356,7 @@ class Game {
     this.isVoting = false;
     this.isDeciding = false;
     this.wordGuessed = false;
+    this.guessFailed = false;
     
     for (const player of this.players.values()) {
       player.hasSubmitted = false;
@@ -411,11 +411,12 @@ class Game {
       isVoting: this.isVoting,
       isDeciding: this.isDeciding,
       wordGuessed: this.wordGuessed,
+      guessFailed: this.guessFailed,
       players: Array.from(this.players.values()).map(p => ({
         id: p.id,
         name: p.name,
-        // POKAZUJEMY TYLKO WŁASNĄ ROLĘ - impostor widoczny tylko dla siebie
-        isImpostor: p.isImpostor && (playerId === p.id || !this.isPlaying),
+        // POKAZUJEMY TYLKO WŁASNĄ ROLĘ
+        isImpostor: p.isImpostor && (playerId === p.id || !this.isPlaying || this.guessFailed || this.wordGuessed),
         isHost: p.isHost,
         hasSubmitted: p.hasSubmitted,
         hasDecided: p.hasDecided,
@@ -440,6 +441,14 @@ class Game {
         if (player.isImpostor && this.isPlaying) {
           state.playerWord = this.hint;
           state.isImpostor = true;
+          
+          // Dodajemy listę współimpostorów (bez siebie)
+          state.coImpostors = this.impostorIds
+            .filter(id => id !== playerId)
+            .map(id => {
+              const coImpostor = this.players.get(id);
+              return coImpostor ? coImpostor.name : 'Nieznany';
+            });
         } else {
           state.playerWord = this.word;
           state.isImpostor = false;
@@ -555,7 +564,7 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    if (!game.isPlaying || game.isVoting || game.isDeciding) return;
+    if (!game.isPlaying || game.isVoting || game.isDeciding || game.wordGuessed || game.guessFailed) return;
     
     if (game.gameMode === 'sequential') {
       const currentTurnPlayerId = game.getCurrentTurnPlayerId();
@@ -604,13 +613,11 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    if (!game.isPlaying) return;
+    if (!game.isPlaying || game.wordGuessed || game.guessFailed) return;
     
     const result = game.submitGuess(socket.id, guess);
     
     if (result.correct) {
-      game.wordGuessed = true;
-      
       io.to(gameCode).emit('wordGuessed', {
         guesserId: result.guesserId,
         guesserName: result.guesserName,
@@ -618,16 +625,26 @@ io.on('connection', (socket) => {
         gameState: game.getGameState()
       });
       
-      if (game.gameMode === 'sequential') {
-        setTimeout(() => {
-          io.to(gameCode).emit('gameEnded', {
-            reason: 'wordGuessed',
-            gameState: game.getGameState()
-          });
-        }, 3000);
-      }
+      setTimeout(() => {
+        io.to(gameCode).emit('gameEnded', {
+          reason: 'wordGuessed',
+          gameState: game.getGameState()
+        });
+      }, 3000);
     } else {
-      socket.emit('guessResult', { correct: false });
+      io.to(gameCode).emit('guessFailed', {
+        guesserId: result.guesserId,
+        guesserName: result.guesserName,
+        word: game.word,
+        gameState: game.getGameState()
+      });
+      
+      setTimeout(() => {
+        io.to(gameCode).emit('gameEnded', {
+          reason: 'guessFailed',
+          gameState: game.getGameState()
+        });
+      }, 3000);
     }
   });
   
@@ -638,7 +655,7 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    if (!game.isPlaying || !game.isDeciding) return;
+    if (!game.isPlaying || !game.isDeciding || game.wordGuessed || game.guessFailed) return;
     
     const decisionResult = game.submitDecision(socket.id, decision);
     
@@ -688,7 +705,7 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    if (!game.isPlaying || !game.isVoting) return;
+    if (!game.isPlaying || !game.isVoting || game.wordGuessed || game.guessFailed) return;
     
     const voteResults = game.submitVote(socket.id, votedPlayerId);
     
@@ -715,7 +732,7 @@ io.on('connection', (socket) => {
     
     if (socket.id !== game.hostId) return;
     
-    if (!game.isPlaying || game.currentRound >= game.rounds) {
+    if (!game.isPlaying || game.currentRound >= game.rounds || game.wordGuessed || game.guessFailed) {
       io.to(gameCode).emit('gameEnded', {
         gameState: game.getGameState()
       });
@@ -747,6 +764,7 @@ io.on('connection', (socket) => {
     game.isVoting = false;
     game.isDeciding = false;
     game.wordGuessed = false;
+    game.guessFailed = false;
     
     for (const player of game.players.values()) {
       player.isImpostor = false;
