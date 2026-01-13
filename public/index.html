@@ -20,8 +20,8 @@
                 <div class="logo">
                     <i class="fas fa-user-secret"></i>
                 </div>
-                <h2>Witaj w grze Impostor 2.0!</h2>
-                <p>Nowe funkcje: wybierz liczbę impostorów, tryb gry, głosuj czy zachować hasło i zgaduj hasło jako impostor!</p>
+                <h2>Witaj w grze Impostor!</h2>
+                <p>Dołącz do gry i sprawdź, czy potrafisz odkryć, kto jest impostorem!</p>
                 
                 <div class="button-group">
                     <button id="create-game-btn" class="btn btn-primary">
@@ -38,7 +38,6 @@
         <div id="create-screen" class="screen">
             <div class="panel">
                 <h2><i class="fas fa-cogs"></i> Tworzenie nowej gry</h2>
-                <p>Skonfiguruj ustawienia gry. Hasło będzie losowane automatycznie.</p>
                 
                 <div class="input-group">
                     <label for="player-name-host">
@@ -79,7 +78,7 @@
                             <i class="fas fa-user-secret"></i> Liczba impostorów:
                         </label>
                         <select id="num-impostors">
-                            <option value="1">1 impostor</option>
+                            <option value="1" selected>1 impostor</option>
                             <option value="2">2 impostorów</option>
                             <option value="3">3 impostorów</option>
                         </select>
@@ -90,7 +89,7 @@
                             <i class="fas fa-gamepad"></i> Tryb gry:
                         </label>
                         <select id="game-mode">
-                            <option value="simultaneous">Wszyscy jednocześnie</option>
+                            <option value="simultaneous" selected>Wszyscy jednocześnie</option>
                             <option value="sequential">Kolejka (po kolei)</option>
                         </select>
                     </div>
@@ -336,24 +335,6 @@
                     <h3><i class="fas fa-vote-yea"></i> Głosowanie na impostora</h3>
                     <p>Przeczytaj wszystkie skojarzenia i zagłosuj, kto twoim zdaniem jest impostorem.</p>
                     
-                    <!-- Sekcja zgadywania hasła dla impostora w trybie simultaneous -->
-                    <div id="voting-guess-section" style="display: none; margin-bottom: 30px;">
-                        <div class="panel" style="background-color: rgba(200, 78, 78, 0.1); border-color: #c84e4e;">
-                            <h4 style="color: #fb8f8f;">
-                                <i class="fas fa-lightbulb"></i> Jesteś impostorem! Możesz zgadnąć hasło:
-                            </h4>
-                            <div class="guess-input-container" style="display: flex; gap: 10px; margin-top: 15px;">
-                                <input type="text" id="voting-guess-input" placeholder="Twoje zgadywanie..." style="flex-grow: 1;">
-                                <button id="submit-voting-guess-btn" class="btn btn-danger">
-                                    <i class="fas fa-lightbulb"></i> Zgadnij
-                                </button>
-                            </div>
-                            <p style="font-size: 0.9rem; color: #fb8f8f; margin-top: 10px;">
-                                Jeśli odgadniesz hasło, wygrasz dodatkowe punkty i zakończysz grę!
-                            </p>
-                        </div>
-                    </div>
-                    
                     <div id="associations-list" class="associations-list">
                         <!-- Skojarzenia będą dodawane dynamicznie -->
                     </div>
@@ -399,13 +380,6 @@
             </div>
             
             <div class="sidebar">
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-trophy"></i> Wyniki</h3>
-                    <div id="scoreboard" class="scoreboard">
-                        <!-- Tabela wyników będzie dodawana dynamicznie -->
-                    </div>
-                </div>
-                
                 <div class="sidebar-section">
                     <h3><i class="fas fa-users"></i> Gracze (<span id="players-count">1</span>)</h3>
                     <div id="game-players-list" class="players-list">
