@@ -81,7 +81,6 @@ class Game {
     this.turnOrder = [];
     this.turnTimer = null;
     
-    // Losuj pierwsze hasło
     this.currentWordPair = this.getRandomWordPair();
     this.word = this.currentWordPair.word;
     this.hint = this.currentWordPair.hint;
@@ -114,7 +113,6 @@ class Game {
     const wasImpostor = this.players.get(playerId)?.isImpostor;
     this.players.delete(playerId);
     
-    // Usuń z listy impostorów jeśli był impostorem
     this.impostorIds = this.impostorIds.filter(id => id !== playerId);
     
     if (playerId === this.hostId) {
@@ -163,7 +161,6 @@ class Game {
     this.word = this.currentWordPair.word;
     this.hint = this.currentWordPair.hint;
     
-    // Przygotuj kolejkę dla trybu sequential
     if (this.gameMode === 'sequential') {
       this.prepareTurnOrder();
     }
@@ -195,7 +192,6 @@ class Game {
     
     this.currentTurnIndex++;
     
-    // Sprawdź czy wszyscy skończyli
     if (this.currentTurnIndex >= this.turnOrder.length) {
       return false;
     }
@@ -630,7 +626,7 @@ io.on('connection', (socket) => {
   });
   
   socket.on('submitDecision', (data) => {
-    const { decision, keepSameWord } = data;
+    const { decision } = data; // Usunięto keepSameWord - tylko host może wybrać
     const gameCode = socket.gameCode;
     if (!gameCode || !games.has(gameCode)) return;
     
@@ -654,15 +650,31 @@ io.on('connection', (socket) => {
             gameState: game.getGameState()
           });
         } else {
-          game.nextRound(keepSameWord);
-          io.to(gameCode).emit('nextRoundStarted', {
+          // Większość chce grać dalej - czekaj na decyzję hosta o haśle
+          io.to(gameCode).emit('waitingForHostDecision', {
             decisionResult,
-            keepSameWord,
             gameState: game.getGameState()
           });
         }
       }, 1000);
     }
+  });
+  
+  // Nowy event: host decyduje czy zachować hasło
+  socket.on('hostDecision', (data) => {
+    const { keepSameWord } = data;
+    const gameCode = socket.gameCode;
+    if (!gameCode || !games.has(gameCode)) return;
+    
+    const game = games.get(gameCode);
+    
+    if (socket.id !== game.hostId) return;
+    
+    game.nextRound(keepSameWord);
+    io.to(gameCode).emit('nextRoundStarted', {
+      keepSameWord,
+      gameState: game.getGameState()
+    });
   });
   
   socket.on('submitVote', (data) => {
