@@ -207,20 +207,19 @@ function initSocket() {
         showWordGuessed(data);
     });
     
-    socket.on('guessResult', (data) => {
-        if (data.correct === false) {
-            showNotification('Nieprawidłowe zgadywanie!', 'error');
-        }
+    socket.on('guessFailed', (data) => {
+        gameState = data.gameState;
+        showGuessFailed(data);
     });
     
     socket.on('gameEnded', (data) => {
         gameState = data.gameState;
-        if (data.reason === 'wordGuessed') {
+        if (data.reason === 'wordGuessed' || data.reason === 'guessFailed') {
             setTimeout(() => {
-                showFinalResults();
+                showFinalResults(data.reason);
             }, 3000);
         } else {
-            showFinalResults();
+            showFinalResults('normal');
         }
     });
     
@@ -308,14 +307,15 @@ function updateGamePlayersList() {
     playersCount.textContent = gameState.players.length;
     
     gameState.players.forEach(player => {
-        // NIE pokazujemy kto jest impostorem w trakcie gry
-        const showImpostor = player.isImpostor && (!gameState.isPlaying || gameState.isVoting);
+        // POKAZUJEMY impostora TYLKO jeśli gra się skończyła lub gracz jest sobą
+        const showImpostor = player.isImpostor && 
+            (!gameState.isPlaying || gameState.wordGuessed || gameState.guessFailed || player.id === socket.id);
         
         const playerCard = document.createElement('div');
         playerCard.className = `player-card ${showImpostor ? 'impostor' : ''} ${player.isHost ? 'host' : ''}`;
         
         let status = '';
-        if (gameState.isPlaying && !gameState.isVoting && !gameState.isDeciding) {
+        if (gameState.isPlaying && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed && !gameState.guessFailed) {
             if (gameState.gameMode === 'sequential') {
                 status = player.turnCompleted ? 'ready' : 'waiting';
             } else {
@@ -377,13 +377,17 @@ function updateGameInterface() {
     const wordDisplay = document.getElementById('word-display');
     const roleHint = document.getElementById('role-hint');
     
-    // Host zawsze widzi pełne hasło (nie podpowiedź)
-    if (isImpostor && !isHost) {
+    if (isImpostor && gameState.isPlaying) {
         wordDisplay.textContent = gameState.hint;
         roleHint.innerHTML = '<i class="fas fa-user-secret"></i> Jesteś IMPOSTOREM! Nie znasz hasła, widzisz tylko podpowiedź. Spróbuj zgadnąć hasło!';
         roleHint.style.color = '#fb8f8f';
         
-        if (gameState.gameMode === 'sequential' && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed) {
+        // Pokaż listę współimpostorów, jeśli istnieją
+        if (gameState.coImpostors && gameState.coImpostors.length > 0) {
+            roleHint.innerHTML += `<br><small>Współimpostorzy: ${gameState.coImpostors.join(', ')}</small>`;
+        }
+        
+        if (gameState.gameMode === 'sequential' && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed && !gameState.guessFailed) {
             document.getElementById('guess-section').style.display = 'block';
         } else {
             document.getElementById('guess-section').style.display = 'none';
@@ -403,11 +407,11 @@ function updateGameInterface() {
         const turnSection = document.getElementById('turn-section');
         const currentTurnPlayerId = gameState.currentTurnPlayerId;
         
-        if (currentTurnPlayerId && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed) {
+        if (currentTurnPlayerId && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed && !gameState.guessFailed) {
             turnSection.style.display = 'block';
             const currentPlayer = gameState.players.find(p => p.id === currentTurnPlayerId);
             document.getElementById('current-turn-player').innerHTML = `
-                <div class="player-card" style="display: inline-block; padding: 10px 20px;">
+                <div class="player-card ${currentPlayer.isImpostor ? 'impostor' : ''}" style="display: inline-block; padding: 10px 20px;">
                     <div class="player-name">${currentPlayer.name}</div>
                 </div>
             `;
@@ -430,7 +434,7 @@ function updateGameInterface() {
         }
     }
     
-    if (gameState.wordGuessed) {
+    if (gameState.wordGuessed || gameState.guessFailed) {
         document.getElementById('association-section').style.display = 'none';
         document.getElementById('waiting-section').style.display = 'none';
         document.getElementById('voting-section').style.display = 'none';
@@ -439,11 +443,7 @@ function updateGameInterface() {
         document.getElementById('turn-section').style.display = 'none';
         document.getElementById('word-guessed-section').style.display = 'block';
     } else if (gameState.isDeciding) {
-        if (isHost && !gameState.players.find(p => p.id === socket.id).hasDecided) {
-            showHostDecisionPhase();
-        } else {
-            showDecisionPhase();
-        }
+        showDecisionPhase();
     } else if (gameState.isVoting) {
         startVoting();
     } else if (!gameState.isPlaying) {
@@ -480,7 +480,7 @@ function updateGameInterface() {
         startTimer();
     }
     
-    if (isHost) {
+    if (isHost && gameState.isPlaying) {
         document.getElementById('host-controls').style.display = 'flex';
     } else {
         document.getElementById('host-controls').style.display = 'none';
@@ -531,16 +531,15 @@ function showNextTurn(nextPlayerId) {
 function updateProgress() {
     if (!gameState || !gameState.players) return;
     
-    const nonHostPlayers = gameState.players.filter(p => !p.isHost);
     let submittedPlayers = 0;
-    let totalPlayers = nonHostPlayers.length;
+    let totalPlayers = gameState.players.length;
     
     if (gameState.gameMode === 'sequential') {
-        submittedPlayers = nonHostPlayers.filter(p => p.turnCompleted).length;
+        submittedPlayers = gameState.players.filter(p => p.turnCompleted).length;
     } else if (gameState.isDeciding) {
-        submittedPlayers = nonHostPlayers.filter(p => p.hasDecided).length;
+        submittedPlayers = gameState.players.filter(p => p.hasDecided).length;
     } else {
-        submittedPlayers = nonHostPlayers.filter(p => p.hasSubmitted).length;
+        submittedPlayers = gameState.players.filter(p => p.hasSubmitted).length;
     }
     
     const progressText = document.getElementById('progress-text');
@@ -571,13 +570,13 @@ function showDecisionPhase() {
     
     displayAssociationsWithNames();
     
+    document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
+    document.getElementById('vote-impostor-btn').disabled = false;
+    document.getElementById('continue-game-btn').disabled = false;
+    
+    // Ukryj opcję zachowania hasła dla nie-hostów
     if (!isHost) {
-        document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
-        document.getElementById('vote-impostor-btn').style.display = 'inline-flex';
-        document.getElementById('continue-game-btn').style.display = 'inline-flex';
         document.getElementById('keep-word-option').style.display = 'none';
-        document.getElementById('vote-impostor-btn').disabled = false;
-        document.getElementById('continue-game-btn').disabled = false;
     }
 }
 
@@ -690,7 +689,7 @@ function loadVoteOptions() {
     if (!gameState || !gameState.players) return;
     
     gameState.players.forEach(player => {
-        if (player.id !== socket.id && !player.isHost) {
+        if (player.id !== socket.id) { // Można głosować na każdego oprócz siebie
             const voteBtn = document.createElement('button');
             voteBtn.className = 'vote-btn';
             voteBtn.textContent = player.name;
@@ -830,13 +829,31 @@ function showWordGuessed(data) {
             Impostorzy wygrywają rundę!
         </p>
         <p style="margin-top: 30px; color: #b0b0d0;">
-            ${gameState.gameMode === 'sequential' ? 'Gra kończy się natychmiast!' : 'Gra kontynuuje głosowanie...'}
+            Gra zakończona.
         </p>
     `;
+}
+
+function showGuessFailed(data) {
+    const wordGuessedSection = document.getElementById('word-guessed-section');
+    const wordGuessedContent = document.getElementById('word-guessed-content');
     
-    if (gameState.gameMode === 'simultaneous') {
-        document.getElementById('voting-section').style.display = 'block';
-    }
+    wordGuessedSection.style.display = 'block';
+    
+    wordGuessedContent.innerHTML = `
+        <p style="font-size: 1.5rem; color: #ffffff;">
+            Impostor <strong style="color: #fb8f8f;">${data.guesserName}</strong> nie odgadł hasła!
+        </p>
+        <p style="font-size: 1.8rem; font-weight: bold; color: #8ffb8f; margin: 20px 0;">
+            Hasło: ${data.word}
+        </p>
+        <p style="color: #8ffb8f; font-size: 1.2rem;">
+            Gracze wygrywają!
+        </p>
+        <p style="margin-top: 30px; color: #b0b0d0;">
+            Gra zakończona.
+        </p>
+    `;
 }
 
 function startNextRound() {
@@ -849,56 +866,82 @@ function startNextRound() {
 function updateSidebarInfo() {
     document.getElementById('sidebar-game-mode').textContent = gameState.gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy';
     document.getElementById('sidebar-impostor-count').textContent = gameState.numImpostors;
-    document.getElementById('sidebar-current-word').textContent = isImpostor && !isHost ? gameState.hint : gameState.word;
+    document.getElementById('sidebar-current-word').textContent = isImpostor && gameState.isPlaying ? gameState.hint : gameState.word;
 }
 
-function showFinalResults() {
+function showFinalResults(reason) {
     const sortedPlayers = [...gameState.players].sort((a, b) => {
         if (a.isImpostor && !b.isImpostor) return -1;
         if (!a.isImpostor && b.isImpostor) return 1;
         return 0;
     });
     
-    let resultsHTML = `
-        <div class="results-card">
-            <h2 class="results-title">
-                <i class="fas fa-flag-checkered"></i> KONIEC GRY!
-            </h2>
-            
-            <div style="margin: 30px 0;">
-                <h3 style="color: #8f94fb; margin-bottom: 20px;">Role graczy:</h3>
-                <div style="background: rgba(15, 21, 48, 0.5); border-radius: 10px; padding: 20px;">
-                    ${sortedPlayers.map((player, index) => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; 
-                                    padding: 15px; border-bottom: ${index < sortedPlayers.length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none'};
-                                    background: ${player.isImpostor ? 'rgba(200, 78, 78, 0.2)' : 'rgba(78, 84, 200, 0.2)'}; border-radius: 8px; margin-bottom: 10px;">
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <div>
-                                    <div style="font-weight: bold; font-size: 1.2rem;">${player.name}</div>
-                                    <div style="font-size: 0.9rem; color: ${player.isImpostor ? '#fb8f8f' : '#8f94fb'}">
-                                        ${player.isImpostor ? 'IMPOSTOR' : player.isHost ? 'HOST' : 'GRACZ'}
-                                    </div>
+    let resultsHTML = '';
+    
+    if (reason === 'wordGuessed') {
+        resultsHTML = `
+            <div class="results-card lose">
+                <h2 class="results-title">
+                    <i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!
+                </h2>
+                <p style="font-size: 1.3rem; color: #fb8f8f; margin: 20px 0;">
+                    Impostor odgadł hasło: <strong>${gameState.word}</strong>
+                </p>
+        `;
+    } else if (reason === 'guessFailed') {
+        resultsHTML = `
+            <div class="results-card win">
+                <h2 class="results-title">
+                    <i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!
+                </h2>
+                <p style="font-size: 1.3rem; color: #8ffb8f; margin: 20px 0;">
+                    Impostor nie odgadł hasła: <strong>${gameState.word}</strong>
+                </p>
+        `;
+    } else {
+        resultsHTML = `
+            <div class="results-card">
+                <h2 class="results-title">
+                    <i class="fas fa-flag-checkered"></i> KONIEC GRY!
+                </h2>
+        `;
+    }
+    
+    resultsHTML += `
+        <div style="margin: 30px 0;">
+            <h3 style="color: #8f94fb; margin-bottom: 20px;">Role graczy:</h3>
+            <div style="background: rgba(15, 21, 48, 0.5); border-radius: 10px; padding: 20px;">
+                ${sortedPlayers.map((player, index) => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; 
+                                padding: 15px; border-bottom: ${index < sortedPlayers.length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none'};
+                                background: ${player.isImpostor ? 'rgba(200, 78, 78, 0.2)' : 'rgba(78, 84, 200, 0.2)'}; border-radius: 8px; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div>
+                                <div style="font-weight: bold; font-size: 1.2rem;">${player.name}</div>
+                                <div style="font-size: 0.9rem; color: ${player.isImpostor ? '#fb8f8f' : '#8f94fb'}">
+                                    ${player.isImpostor ? 'IMPOSTOR' : player.isHost ? 'HOST' : 'GRACZ'}
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
-                </div>
+                    </div>
+                `).join('')}
             </div>
-            
-            <div style="margin-top: 30px; padding: 20px; background: rgba(15, 21, 48, 0.5); border-radius: 10px;">
-                <h4 style="color: #8f94fb; margin-bottom: 15px;">Podsumowanie:</h4>
-                <ul style="color: #b0b0d0; line-height: 1.8;">
-                    <li>Ostatnie hasło: <strong>${gameState.word}</strong></li>
-                    <li>Impostorzy widzieli: <strong>${gameState.hint}</strong></li>
-                    <li>Rozegrane rundy: <strong>${gameState.currentRound}</strong></li>
-                </ul>
-            </div>
-            
-            <p style="margin-top: 30px; color: #b0b0d0; font-style: italic;">
-                Dziękujemy za grę! Czy chcesz zagrać ponownie?
-            </p>
         </div>
-    `;
+        
+        <div style="margin-top: 30px; padding: 20px; background: rgba(15, 21, 48, 0.5); border-radius: 10px;">
+            <h4 style="color: #8f94fb; margin-bottom: 15px;">Podsumowanie:</h4>
+            <ul style="color: #b0b0d0; line-height: 1.8;">
+                <li>Ostatnie hasło: <strong>${gameState.word}</strong></li>
+                <li>Impostorzy widzieli: <strong>${gameState.hint}</strong></li>
+                <li>Rozegrane rundy: <strong>${gameState.currentRound}</strong></li>
+                <li>Impostorzy: <strong>${gameState.impostorIds.length}</strong></li>
+            </ul>
+        </div>
+        
+        <p style="margin-top: 30px; color: #b0b0d0; font-style: italic;">
+            Dziękujemy za grę! Czy chcesz zagrać ponownie?
+        </p>
+    </div>`;
     
     document.getElementById('final-results-content').innerHTML = resultsHTML;
     switchScreen('finalResults');
