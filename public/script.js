@@ -1171,33 +1171,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-/* Responsywność */
-@media (max-width: 768px) {
-    .round-info {
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px;
-    }
-    
-    .turn-info {
-        padding: 15px;
-    }
-    
-    .current-turn {
-        font-size: 1.2rem;
-    }
-    
-    .turn-timer {
-        font-size: 2rem;
-    }
-    
-    .guess-input-container {
-        flex-direction: column;
-    }
-    
-    #vote-impostor-btn, #continue-game-btn {
-        margin: 10px 0;
-        width: 100%;
     }
 }
