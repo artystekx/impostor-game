@@ -177,6 +177,15 @@ function initSocket() {
         startVoting();
     });
     
+    socket.on('waitingForHostDecision', (data) => {
+        gameState = data.gameState;
+        if (isHost) {
+            showHostDecisionPhase();
+        } else {
+            showNotification('Czekamy na decyzję hosta...', 'info');
+        }
+    });
+    
     socket.on('voteSubmitted', (data) => {
         gameState = data.gameState;
         updateGamePlayersList();
@@ -190,12 +199,6 @@ function initSocket() {
     
     socket.on('nextRoundStarted', (data) => {
         gameState = data.gameState;
-        if (data.decisionResult) {
-            const voteCount = data.decisionResult.voteCount;
-            const continueCount = data.decisionResult.continueCount;
-            const wordKept = data.keepSameWord ? ' (zachowano hasło)' : '';
-            showNotification(`Wynik decyzji: ${continueCount} za kontynuacją, ${voteCount} za głosowaniem${wordKept}. Gramy dalej!`, 'success');
-        }
         startNextRound();
     });
     
@@ -325,7 +328,7 @@ function updateGamePlayersList() {
             ${status ? `<div class="player-status ${status}"></div>` : ''}
             <div class="player-name">${player.name}</div>
             <div class="player-role">
-                ${player.isHost ? 'HOST' : player.isImpostor ? 'IMPOSTOR' : 'GRACZ'}
+                ${player.isHost ? 'HOST' : ''}
             </div>
         `;
         
@@ -360,9 +363,8 @@ function updateGameInterface() {
     document.getElementById('impostor-count').textContent = gameState.numImpostors;
     document.getElementById('game-mode-badge').textContent = gameState.gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy';
     
-    // Ustaw czas w zależności od trybu
     if (gameState.gameMode === 'sequential') {
-        timeLeft = 30; // Czas na turę w trybie sequential
+        timeLeft = 30;
     } else {
         timeLeft = roundTime;
     }
@@ -374,10 +376,9 @@ function updateGameInterface() {
     
     if (isImpostor) {
         wordDisplay.textContent = gameState.playerWord || gameState.hint;
-        roleHint.innerHTML = '<i class="fas fa-user-secret"></i> Jesteś IMPOSTOREM! Nie znasz hasła, widzisz tylko podpowiedź. Udawaj, że wiesz o co chodzi! Możesz też zgadywać hasło!';
+        roleHint.innerHTML = '<i class="fas fa-user-secret"></i> Jesteś IMPOSTOREM! Nie znasz hasła, widzisz tylko podpowiedź. Spróbuj zgadnąć hasło!';
         roleHint.style.color = '#fb8f8f';
         
-        // Pokaż sekcję zgadywania w zależności od trybu
         if (gameState.gameMode === 'sequential' && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed) {
             document.getElementById('guess-section').style.display = 'block';
         } else {
@@ -390,7 +391,6 @@ function updateGameInterface() {
         document.getElementById('guess-section').style.display = 'none';
     }
     
-    // Obsługa sekcji tury dla trybu sequential
     if (gameState.gameMode === 'sequential') {
         const turnSection = document.getElementById('turn-section');
         const currentTurnPlayerId = gameState.currentTurnPlayerId;
@@ -401,11 +401,9 @@ function updateGameInterface() {
             document.getElementById('current-turn-player').innerHTML = `
                 <div class="player-card ${currentPlayer.isImpostor ? 'impostor' : ''}" style="display: inline-block; padding: 10px 20px;">
                     <div class="player-name">${currentPlayer.name}</div>
-                    <div class="player-role">${currentPlayer.isImpostor ? 'IMPOSTOR' : 'GRACZ'}</div>
                 </div>
             `;
             
-            // Jeśli to nasza tura, pokaż input
             if (currentTurnPlayerId === socket.id) {
                 document.getElementById('association-section').style.display = 'block';
                 document.getElementById('waiting-section').style.display = 'none';
@@ -413,7 +411,6 @@ function updateGameInterface() {
                 document.getElementById('association-input').disabled = false;
                 document.getElementById('submit-association-btn').disabled = false;
                 
-                // Uruchom timer tury
                 startTurnTimer();
             } else {
                 document.getElementById('association-section').style.display = 'none';
@@ -425,9 +422,7 @@ function updateGameInterface() {
         }
     }
     
-    // Pokaż odpowiednią sekcję
     if (gameState.wordGuessed) {
-        // Impostor odgadł hasło
         document.getElementById('association-section').style.display = 'none';
         document.getElementById('waiting-section').style.display = 'none';
         document.getElementById('voting-section').style.display = 'none';
@@ -448,7 +443,6 @@ function updateGameInterface() {
         document.getElementById('turn-section').style.display = 'none';
         document.getElementById('word-guessed-section').style.display = 'none';
     } else if (gameState.gameMode === 'simultaneous') {
-        // Tryb simultaneous
         document.getElementById('association-section').style.display = 'block';
         document.getElementById('waiting-section').style.display = 'none';
         document.getElementById('voting-section').style.display = 'none';
@@ -495,10 +489,6 @@ function startTimer() {
         
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
-            
-            if (isHost && !gameState.isVoting && !gameState.isDeciding) {
-                socket.emit('startGame');
-            }
         }
     }, 1000);
 }
@@ -515,7 +505,6 @@ function startTurnTimer() {
         
         if (turnTimeLeft <= 0) {
             clearInterval(turnTimerInterval);
-            // Czas się skończył - automatycznie przejdź dalej (serwer powinien to obsłużyć)
         }
     }, 1000);
 }
@@ -573,7 +562,29 @@ function showDecisionPhase() {
     document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
     document.getElementById('vote-impostor-btn').disabled = false;
     document.getElementById('continue-game-btn').disabled = false;
-    document.getElementById('keep-same-word').checked = false;
+    
+    // Ukryj opcję zachowania hasła dla nie-hostów
+    if (!isHost) {
+        document.getElementById('keep-word-option').style.display = 'none';
+    }
+}
+
+function showHostDecisionPhase() {
+    document.getElementById('association-section').style.display = 'none';
+    document.getElementById('waiting-section').style.display = 'none';
+    document.getElementById('voting-section').style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('turn-section').style.display = 'none';
+    document.getElementById('word-guessed-section').style.display = 'none';
+    document.getElementById('decision-section').style.display = 'block';
+    
+    displayAssociationsWithNames();
+    
+    document.getElementById('decision-status').textContent = 'Jesteś hostem! Zdecyduj czy zachować to samo hasło:';
+    document.getElementById('vote-impostor-btn').style.display = 'none';
+    document.getElementById('continue-game-btn').style.display = 'none';
+    document.getElementById('host-decision-buttons').style.display = 'block';
+    document.getElementById('keep-word-option').style.display = 'block';
 }
 
 function displayAssociationsWithNames() {
@@ -587,13 +598,12 @@ function displayAssociationsWithNames() {
     gameState.associations.forEach((assoc, index) => {
         const associationCard = document.createElement('div');
         associationCard.className = 'association-card';
-        associationCard.style.border = assoc.isImpostor ? '2px solid #c84e4e' : '2px solid #4e54c8';
-        associationCard.style.background = assoc.isImpostor ? 'rgba(200, 78, 78, 0.1)' : 'rgba(78, 84, 200, 0.1)';
+        associationCard.style.border = '2px solid #4e54c8';
+        associationCard.style.background = 'rgba(78, 84, 200, 0.1)';
         associationCard.style.minWidth = '200px';
         associationCard.style.padding = '15px';
         associationCard.style.borderRadius = '10px';
         
-        // Dodaj informację jeśli gracz nie wysłał skojarzenia
         const hasAssociation = assoc.association && assoc.association.trim() !== '';
         const associationText = hasAssociation ? assoc.association : '(brak skojarzenia)';
         const textColor = hasAssociation ? '#ffffff' : '#888888';
@@ -603,7 +613,7 @@ function displayAssociationsWithNames() {
             <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.3); color: #fff; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
                 ${index + 1}
             </div>
-            <div style="font-weight: bold; color: ${assoc.isImpostor ? '#fb8f8f' : '#8f94fb'}; margin-bottom: 10px; text-align: center;">
+            <div style="font-weight: bold; color: #8f94fb; margin-bottom: 10px; text-align: center;">
                 <i class="fas fa-user"></i> ${assoc.playerName}
             </div>
             <div style="font-size: 1.3rem; font-weight: bold; text-align: center; color: ${textColor}; font-style: ${textStyle};">${associationText}</div>
@@ -640,10 +650,9 @@ function loadAssociationsForVoting() {
     gameState.associations.forEach((assoc, index) => {
         const associationCard = document.createElement('div');
         associationCard.className = 'association-card';
-        associationCard.style.border = assoc.isImpostor ? '2px solid #c84e4e' : '2px solid #4e54c8';
-        associationCard.style.background = assoc.isImpostor ? 'rgba(200, 78, 78, 0.1)' : 'rgba(78, 84, 200, 0.1)';
+        associationCard.style.border = '2px solid #4e54c8';
+        associationCard.style.background = 'rgba(78, 84, 200, 0.1)';
         
-        // Dodaj informację jeśli gracz nie wysłał skojarzenia
         const hasAssociation = assoc.association && assoc.association.trim() !== '';
         const associationText = hasAssociation ? assoc.association : '(brak skojarzenia)';
         const textColor = hasAssociation ? '#ffffff' : '#888888';
@@ -651,7 +660,7 @@ function loadAssociationsForVoting() {
         
         associationCard.innerHTML = `
             <div class="association-number">${index + 1}</div>
-            <div class="player-name" style="color: ${assoc.isImpostor ? '#fb8f8f' : '#8f94fb'}; margin-bottom: 10px;">
+            <div class="player-name" style="color: #8f94fb; margin-bottom: 10px;">
                 <i class="fas fa-user"></i> ${assoc.playerName}
             </div>
             <div class="association-text" style="color: ${textColor}; font-style: ${textStyle};">${associationText}</div>
@@ -669,7 +678,6 @@ function loadVoteOptions() {
     
     if (!gameState || !gameState.players) return;
     
-    // Dodaj opcję głosowania na każdego gracza (oprócz siebie i hosta)
     gameState.players.forEach(player => {
         if (player.id !== socket.id && !player.isHost) {
             const voteBtn = document.createElement('button');
@@ -689,7 +697,6 @@ function loadVoteOptions() {
         }
     });
     
-    // Dodaj przycisk głosowania
     const submitVoteBtn = document.createElement('button');
     submitVoteBtn.id = 'submit-vote-btn';
     submitVoteBtn.className = 'btn btn-primary';
@@ -731,28 +738,21 @@ function showVoteResults(results) {
     let resultsHTML = '';
     
     if (results.votedOutIds.length > 0) {
-        const votedOutPlayers = results.votedOutIds.map(id => {
-            const player = gameState.players.find(p => p.id === id);
-            return player ? player.name : 'Nieznany';
-        }).join(', ');
+        const votedOutPlayer = gameState.players.find(p => p.id === results.votedOutIds[0]);
+        const wasImpostor = gameState.impostorIds.includes(results.votedOutIds[0]);
         
-        const isImpostorVotedOut = results.votedOutIds.some(id => 
-            gameState.impostorIds.includes(id)
-        );
-        
-        if (isImpostorVotedOut) {
-            // Gracze wygrywają
+        if (wasImpostor) {
             resultsHTML = `
                 <div class="results-card win">
                     <h2 class="results-title"><i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!</h2>
-                    <p class="results-message">Wykryto impostora: ${votedOutPlayers}</p>
+                    <p class="results-message">Wykryto impostora: <strong>${votedOutPlayer.name}</strong></p>
                     
                     <div class="impostor-reveal">
                         <h4>PRAWDZIWI IMPOSTORZY:</h4>
                         ${gameState.impostorIds.map(impostorId => {
                             const impostor = gameState.players.find(p => p.id === impostorId);
                             return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
-                                ${impostor.name} ${results.votedOutIds.includes(impostorId) ? '✅ (wykryty)' : '❌ (niewykryty)'}
+                                ${impostor.name} ${results.votedOutIds.includes(impostorId) ? '✅ (wykryty)' : ''}
                             </p>` : '';
                         }).join('')}
                         <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
@@ -760,11 +760,10 @@ function showVoteResults(results) {
                 </div>
             `;
         } else {
-            // Impostorzy wygrywają
             resultsHTML = `
                 <div class="results-card lose">
                     <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
-                    <p class="results-message">Głosowano na niewinnych graczy: ${votedOutPlayers}</p>
+                    <p class="results-message">Głosowano na niewinnego gracza: <strong>${votedOutPlayer.name}</strong></p>
                     
                     <div class="impostor-reveal">
                         <h4>PRAWDZIWI IMPOSTORZY:</h4>
@@ -781,7 +780,6 @@ function showVoteResults(results) {
             `;
         }
     } else {
-        // Remis
         resultsHTML = `
             <div class="results-card">
                 <h2 class="results-title"><i class="fas fa-handshake"></i> REMIS!</h2>
@@ -824,6 +822,10 @@ function showWordGuessed(data) {
             ${gameState.gameMode === 'sequential' ? 'Gra kończy się natychmiast!' : 'Gra kontynuuje głosowanie...'}
         </p>
     `;
+    
+    if (gameState.gameMode === 'simultaneous') {
+        document.getElementById('voting-section').style.display = 'block';
+    }
 }
 
 function startNextRound() {
@@ -833,17 +835,18 @@ function startNextRound() {
     updateGameInterface();
 }
 
-// Aktualizacja sidebaru
 function updateSidebarInfo() {
     document.getElementById('sidebar-game-mode').textContent = gameState.gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy';
     document.getElementById('sidebar-impostor-count').textContent = gameState.numImpostors;
     document.getElementById('sidebar-current-word').textContent = isImpostor ? gameState.hint : gameState.word;
 }
 
-// Wyniki końcowe
 function showFinalResults() {
-    const impostors = gameState.players.filter(p => p.isImpostor);
-    const civilians = gameState.players.filter(p => !p.isImpostor && !p.isHost);
+    const sortedPlayers = [...gameState.players].sort((a, b) => {
+        if (a.isImpostor && !b.isImpostor) return -1;
+        if (!a.isImpostor && b.isImpostor) return 1;
+        return 0;
+    });
     
     let resultsHTML = `
         <div class="results-card">
@@ -852,37 +855,32 @@ function showFinalResults() {
             </h2>
             
             <div style="margin: 30px 0;">
-                <h3 style="color: #8f94fb; margin-bottom: 20px;">Ostatnia runda:</h3>
+                <h3 style="color: #8f94fb; margin-bottom: 20px;">Role graczy:</h3>
                 <div style="background: rgba(15, 21, 48, 0.5); border-radius: 10px; padding: 20px;">
-                    <p><strong>Hasło:</strong> ${gameState.word}</p>
-                    <p><strong>Podpowiedź dla impostorów:</strong> ${gameState.hint}</p>
-                </div>
-            </div>
-            
-            <div style="margin: 30px 0;">
-                <h3 style="color: #8f94fb; margin-bottom: 20px;">Impostorzy:</h3>
-                <div style="background: rgba(200, 78, 78, 0.1); border-radius: 10px; padding: 20px;">
-                    ${impostors.map(impostor => `
+                    ${sortedPlayers.map((player, index) => `
                         <div style="display: flex; justify-content: space-between; align-items: center; 
-                                    padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                            <div style="font-weight: bold; color: #fb8f8f;">${impostor.name}</div>
-                            <div style="color: #ffffff;">IMPOSTOR</div>
+                                    padding: 15px; border-bottom: ${index < sortedPlayers.length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none'};
+                                    background: ${player.isImpostor ? 'rgba(200, 78, 78, 0.2)' : 'rgba(78, 84, 200, 0.2)'}; border-radius: 8px; margin-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div>
+                                    <div style="font-weight: bold; font-size: 1.2rem;">${player.name}</div>
+                                    <div style="font-size: 0.9rem; color: ${player.isImpostor ? '#fb8f8f' : '#8f94fb'}">
+                                        ${player.isImpostor ? 'IMPOSTOR' : player.isHost ? 'HOST' : 'GRACZ'}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
             </div>
             
-            <div style="margin: 30px 0;">
-                <h3 style="color: #8f94fb; margin-bottom: 20px;">Gracze:</h3>
-                <div style="background: rgba(78, 84, 200, 0.1); border-radius: 10px; padding: 20px;">
-                    ${civilians.map(civilian => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; 
-                                    padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                            <div style="font-weight: bold; color: #8f94fb;">${civilian.name}</div>
-                            <div style="color: #ffffff;">GRACZ</div>
-                        </div>
-                    `).join('')}
-                </div>
+            <div style="margin-top: 30px; padding: 20px; background: rgba(15, 21, 48, 0.5); border-radius: 10px;">
+                <h4 style="color: #8f94fb; margin-bottom: 15px;">Podsumowanie:</h4>
+                <ul style="color: #b0b0d0; line-height: 1.8;">
+                    <li>Ostatnie hasło: <strong>${gameState.word}</strong></li>
+                    <li>Impostorzy widzieli: <strong>${gameState.hint}</strong></li>
+                    <li>Rozegrane rundy: <strong>${gameState.currentRound}</strong></li>
+                </ul>
             </div>
             
             <p style="margin-top: 30px; color: #b0b0d0; font-style: italic;">
@@ -1007,19 +1005,26 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Nowe przyciski decyzji
     document.getElementById('vote-impostor-btn').addEventListener('click', () => {
-        const keepSameWord = document.getElementById('keep-same-word').checked;
-        socket.emit('submitDecision', { decision: true, keepSameWord: false });
+        socket.emit('submitDecision', { decision: true });
         document.getElementById('decision-status').textContent = 'Wybrałeś: Głosuj na impostora';
         document.getElementById('vote-impostor-btn').disabled = true;
         document.getElementById('continue-game-btn').disabled = true;
     });
     
     document.getElementById('continue-game-btn').addEventListener('click', () => {
-        const keepSameWord = document.getElementById('keep-same-word').checked;
-        socket.emit('submitDecision', { decision: false, keepSameWord });
-        document.getElementById('decision-status').textContent = 'Wybrałeś: Graj dalej' + (keepSameWord ? ' (zachowaj hasło)' : '');
+        socket.emit('submitDecision', { decision: false });
+        document.getElementById('decision-status').textContent = 'Wybrałeś: Graj dalej';
         document.getElementById('vote-impostor-btn').disabled = true;
         document.getElementById('continue-game-btn').disabled = true;
+    });
+    
+    // Przyciski hosta do decyzji o haśle
+    document.getElementById('keep-word-btn').addEventListener('click', () => {
+        socket.emit('hostDecision', { keepSameWord: true });
+    });
+    
+    document.getElementById('new-word-btn').addEventListener('click', () => {
+        socket.emit('hostDecision', { keepSameWord: false });
     });
     
     document.getElementById('next-round-btn').addEventListener('click', () => {
