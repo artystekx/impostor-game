@@ -771,3 +771,49 @@ small {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 }
+/* Dodaj te style do istniejącego CSS */
+
+.association-card .player-name {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.decision-stats {
+    background: rgba(15, 21, 48, 0.5);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #4e54c8;
+}
+
+.decision-stats h4 {
+    margin-bottom: 15px;
+    color: #8f94fb;
+}
+
+.decision-result {
+    font-size: 1.3rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 10px;
+    background: rgba(78, 84, 200, 0.2);
+    border: 2px solid #4e54c8;
+}
+
+.decision-result.vote {
+    background: rgba(200, 78, 78, 0.2);
+    border-color: #c84e4e;
+    color: #fb8f8f;
+}
+
+.decision-result.continue {
+    background: rgba(78, 200, 78, 0.2);
+    border-color: #4ec84e;
+    color: #8ffb8f;
+}
