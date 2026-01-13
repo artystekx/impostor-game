@@ -36,12 +36,10 @@ function showNotification(message, type = 'info') {
 }
 
 function switchScreen(screenId) {
-    // Ukryj wszystkie ekrany
     Object.values(screens).forEach(screen => {
         if (screen) screen.classList.remove('active');
     });
     
-    // Pokaż wybrany ekran
     if (screens[screenId]) {
         screens[screenId].classList.add('active');
     }
@@ -70,7 +68,6 @@ function updateConnectionStatus(connected) {
 
 // Inicjalizacja połączenia Socket.io
 function initSocket() {
-    // Połącz z serwerem
     socket = io();
     
     socket.on('connect', () => {
@@ -89,15 +86,11 @@ function initSocket() {
         updateConnectionStatus(false);
     });
     
-    // Obsługa zdarzeń od serwera
     socket.on('gameCreated', (data) => {
         gameCode = data.code;
         gameState = data.gameState;
         
-        // Zaktualizuj ekran oczekiwania
         document.getElementById('code-text').textContent = gameCode;
-        document.getElementById('waiting-word').textContent = data.gameState.word;
-        document.getElementById('waiting-hint').textContent = data.gameState.hint;
         document.getElementById('waiting-rounds').textContent = data.gameState.rounds;
         document.getElementById('waiting-time').textContent = data.gameState.roundTime;
         
@@ -113,7 +106,6 @@ function initSocket() {
     socket.on('gameJoined', (data) => {
         gameState = data.gameState;
         
-        // Zaktualizuj ekran oczekiwania gracza
         document.getElementById('waiting-game-code').textContent = gameCode;
         document.getElementById('waiting-player-rounds').textContent = data.gameState.rounds;
         document.getElementById('waiting-player-time').textContent = data.gameState.roundTime;
@@ -129,7 +121,6 @@ function initSocket() {
         if (isHost) {
             updatePlayersList();
             
-            // Aktywuj przycisk startu jeśli jest co najmniej 3 graczy
             const startBtn = document.getElementById('start-game-btn');
             if (gameState.players.length >= 3) {
                 startBtn.disabled = false;
@@ -154,18 +145,29 @@ function initSocket() {
         updateProgress();
     });
     
+    socket.on('decisionPhaseStarted', (data) => {
+        gameState = data.gameState;
+        showDecisionPhase();
+    });
+    
+    socket.on('decisionSubmitted', (data) => {
+        gameState = data.gameState;
+        updateGamePlayersList();
+    });
+    
     socket.on('votingStarted', (data) => {
         gameState = data.gameState;
+        if (data.decisionResult) {
+            const voteCount = data.decisionResult.voteCount;
+            const continueCount = data.decisionResult.continueCount;
+            showNotification(`Wynik decyzji: ${voteCount} za głosowaniem, ${continueCount} za kontynuacją. Rozpoczynamy głosowanie!`, 'info');
+        }
         startVoting();
     });
     
     socket.on('voteSubmitted', (data) => {
         gameState = data.gameState;
-        
-        // Zaktualizuj listę graczy
         updateGamePlayersList();
-        
-        // Zaktualizuj postęp głosowania
         updateVoteProgress();
     });
     
@@ -176,6 +178,11 @@ function initSocket() {
     
     socket.on('nextRoundStarted', (data) => {
         gameState = data.gameState;
+        if (data.decisionResult) {
+            const voteCount = data.decisionResult.voteCount;
+            const continueCount = data.decisionResult.continueCount;
+            showNotification(`Wynik decyzji: ${continueCount} za kontynuacją, ${voteCount} za głosowaniem. Gramy dalej!`, 'success');
+        }
         startNextRound();
     });
     
@@ -215,7 +222,6 @@ function initSocket() {
     });
 }
 
-// Aktualizacja listy graczy
 function updatePlayersList() {
     const playersList = document.getElementById('players-list');
     const playerCount = document.getElementById('player-count');
@@ -273,12 +279,13 @@ function updateGamePlayersList() {
         const playerCard = document.createElement('div');
         playerCard.className = `player-card ${player.isImpostor ? 'impostor' : ''} ${player.isHost ? 'host' : ''}`;
         
-        // Status gracza
         let status = '';
-        if (gameState.isPlaying && !gameState.isVoting) {
+        if (gameState.isPlaying && !gameState.isVoting && !gameState.isDeciding) {
             status = player.hasSubmitted ? 'ready' : 'waiting';
         } else if (gameState.isVoting) {
             status = gameState.votes.some(v => v[0] === player.id) ? 'ready' : 'waiting';
+        } else if (gameState.isDeciding) {
+            status = gameState.decisions.some(d => d[0] === player.id) ? 'ready' : 'waiting';
         }
         
         playerCard.innerHTML = `
@@ -301,14 +308,12 @@ function startGame() {
     totalRounds = gameState.rounds;
     roundTime = gameState.roundTime;
     
-    // Znajdź informacje o graczu
     const playerInfo = gameState.players.find(p => p.id === socket.id);
     if (playerInfo) {
         isImpostor = playerInfo.isImpostor;
         playerName = playerInfo.name;
     }
     
-    // Aktualizuj interfejs
     switchScreen('game');
     updateGameInterface();
     updateGamePlayersList();
@@ -316,15 +321,12 @@ function startGame() {
 }
 
 function updateGameInterface() {
-    // Aktualizuj informacje o rundzie
     document.getElementById('current-round').textContent = gameState.currentRound;
     document.getElementById('total-rounds').textContent = gameState.rounds;
     
-    // Aktualizuj timer
     timeLeft = roundTime;
     document.getElementById('timer').textContent = timeLeft;
     
-    // Aktualizuj hasło/podpowiedź
     const wordDisplay = document.getElementById('word-display');
     const roleHint = document.getElementById('role-hint');
     
@@ -339,32 +341,38 @@ function updateGameInterface() {
     }
     
     // Pokaż odpowiednią sekcję
-    if (gameState.isVoting) {
+    if (gameState.isDeciding) {
         document.getElementById('association-section').style.display = 'none';
         document.getElementById('waiting-section').style.display = 'none';
-        document.getElementById('voting-section').style.display = 'block';
+        document.getElementById('voting-section').style.display = 'none';
         document.getElementById('results-section').style.display = 'none';
+        document.getElementById('decision-section').style.display = 'block';
         
-        // Załaduj skojarzenia do głosowania
+        displayAssociationsWithNames();
+    } else if (gameState.isVoting) {
+        document.getElementById('association-section').style.display = 'none';
+        document.getElementById('waiting-section').style.display = 'none';
+        document.getElementById('decision-section').style.display = 'none';
+        document.getElementById('results-section').style.display = 'none';
+        document.getElementById('voting-section').style.display = 'block';
+        
         loadAssociationsForVoting();
     } else if (!gameState.isPlaying) {
-        // Gra się nie toczy (pomiędzy rundami)
         document.getElementById('association-section').style.display = 'none';
         document.getElementById('waiting-section').style.display = 'block';
         document.getElementById('voting-section').style.display = 'none';
         document.getElementById('results-section').style.display = 'none';
+        document.getElementById('decision-section').style.display = 'none';
     } else {
-        // Aktywna runda - zbieranie skojarzeń
         document.getElementById('association-section').style.display = 'block';
         document.getElementById('waiting-section').style.display = 'none';
         document.getElementById('voting-section').style.display = 'none';
         document.getElementById('results-section').style.display = 'none';
+        document.getElementById('decision-section').style.display = 'none';
         
-        // Zresetuj input
         document.getElementById('association-input').value = '';
         document.getElementById('submitted-message').style.display = 'none';
         
-        // Sprawdź czy gracz już wysłał skojarzenie
         const player = gameState.players.find(p => p.id === socket.id);
         if (player && player.hasSubmitted) {
             document.getElementById('association-input').style.display = 'none';
@@ -375,18 +383,15 @@ function updateGameInterface() {
             document.getElementById('submit-association-btn').style.display = 'flex';
         }
         
-        // Uruchom timer
         startTimer();
     }
     
-    // Pokaż/ukryj kontrolki hosta
     if (isHost) {
         document.getElementById('host-controls').style.display = 'flex';
     } else {
         document.getElementById('host-controls').style.display = 'none';
     }
     
-    // Aktualizuj postęp
     updateProgress();
 }
 
@@ -403,8 +408,7 @@ function startTimer() {
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             
-            // Automatyczne przejście do głosowania (tylko dla hosta)
-            if (isHost && !gameState.isVoting) {
+            if (isHost && !gameState.isVoting && !gameState.isDeciding) {
                 socket.emit('startGame');
             }
         }
@@ -415,17 +419,73 @@ function updateProgress() {
     if (!gameState || !gameState.players) return;
     
     const nonHostPlayers = gameState.players.filter(p => !p.isHost);
-    const submittedPlayers = nonHostPlayers.filter(p => p.hasSubmitted).length;
-    const totalPlayers = nonHostPlayers.length;
+    let submittedPlayers = 0;
+    let totalPlayers = nonHostPlayers.length;
+    
+    if (gameState.isDeciding) {
+        submittedPlayers = nonHostPlayers.filter(p => p.hasDecided).length;
+    } else {
+        submittedPlayers = nonHostPlayers.filter(p => p.hasSubmitted).length;
+    }
     
     const progressText = document.getElementById('progress-text');
     const progressFill = document.getElementById('progress-fill');
     
     if (progressText && progressFill) {
-        progressText.textContent = `${submittedPlayers}/${totalPlayers} graczy gotowych`;
+        if (gameState.isDeciding) {
+            progressText.textContent = `${submittedPlayers}/${totalPlayers} podjęło decyzję`;
+        } else {
+            progressText.textContent = `${submittedPlayers}/${totalPlayers} graczy gotowych`;
+        }
         const progressPercent = totalPlayers > 0 ? (submittedPlayers / totalPlayers) * 100 : 0;
         progressFill.style.width = `${progressPercent}%`;
     }
+}
+
+// Faza decyzji
+function showDecisionPhase() {
+    document.getElementById('association-section').style.display = 'none';
+    document.getElementById('waiting-section').style.display = 'none';
+    document.getElementById('voting-section').style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('decision-section').style.display = 'block';
+    
+    displayAssociationsWithNames();
+    
+    document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
+    document.getElementById('vote-impostor-btn').disabled = false;
+    document.getElementById('continue-game-btn').disabled = false;
+}
+
+function displayAssociationsWithNames() {
+    const container = document.getElementById('decision-associations-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!gameState || !gameState.associations) return;
+    
+    gameState.associations.forEach((assoc, index) => {
+        const associationCard = document.createElement('div');
+        associationCard.className = 'association-card';
+        associationCard.style.border = assoc.isImpostor ? '2px solid #c84e4e' : '2px solid #4e54c8';
+        associationCard.style.background = assoc.isImpostor ? 'rgba(200, 78, 78, 0.1)' : 'rgba(78, 84, 200, 0.1)';
+        associationCard.style.minWidth = '200px';
+        associationCard.style.padding = '15px';
+        associationCard.style.borderRadius = '10px';
+        
+        associationCard.innerHTML = `
+            <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.3); color: #fff; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                ${index + 1}
+            </div>
+            <div style="font-weight: bold; color: ${assoc.isImpostor ? '#fb8f8f' : '#8f94fb'}; margin-bottom: 10px; text-align: center;">
+                <i class="fas fa-user"></i> ${assoc.playerName}
+            </div>
+            <div style="font-size: 1.3rem; font-weight: bold; text-align: center; color: #ffffff;">${assoc.association}</div>
+        `;
+        
+        container.appendChild(associationCard);
+    });
 }
 
 // Głosowanie
@@ -435,45 +495,38 @@ function loadAssociationsForVoting() {
     
     if (!associationsList || !voteOptions) return;
     
-    // Wyczyść poprzednie
     associationsList.innerHTML = '';
     voteOptions.innerHTML = '';
     
-    // Pobierz skojarzenia (losowo pomieszane)
-    const shuffledAssociations = [...gameState.associations].sort(() => Math.random() - 0.5);
+    if (!gameState || !gameState.associations) return;
     
-    // Wyświetl skojarzenia
-    shuffledAssociations.forEach(([playerId, association], index) => {
-        const player = gameState.players.find(p => p.id === playerId);
-        if (!player) return;
-        
+    gameState.associations.forEach((assoc, index) => {
         const associationCard = document.createElement('div');
         associationCard.className = 'association-card';
+        associationCard.style.border = assoc.isImpostor ? '2px solid #c84e4e' : '2px solid #4e54c8';
+        associationCard.style.background = assoc.isImpostor ? 'rgba(200, 78, 78, 0.1)' : 'rgba(78, 84, 200, 0.1)';
         
         associationCard.innerHTML = `
             <div class="association-number">${index + 1}</div>
-            <div class="association-text">${association}</div>
+            <div class="player-name" style="color: ${assoc.isImpostor ? '#fb8f8f' : '#8f94fb'}; margin-bottom: 10px;">
+                <i class="fas fa-user"></i> ${assoc.playerName}
+            </div>
+            <div class="association-text">${assoc.association}</div>
         `;
         
         associationsList.appendChild(associationCard);
         
-        // Dodaj opcję do głosowania (oprócz siebie)
-        if (playerId !== socket.id) {
+        if (assoc.playerId !== socket.id) {
             const voteBtn = document.createElement('button');
             voteBtn.className = 'vote-btn';
-            voteBtn.textContent = player.name;
-            voteBtn.dataset.playerId = playerId;
+            voteBtn.textContent = assoc.playerName;
+            voteBtn.dataset.playerId = assoc.playerId;
             
             voteBtn.addEventListener('click', () => {
-                // Odznacz inne przyciski
                 document.querySelectorAll('.vote-btn').forEach(btn => {
                     btn.classList.remove('selected');
                 });
-                
-                // Zaznacz wybrany
                 voteBtn.classList.add('selected');
-                
-                // Aktywuj przycisk głosowania
                 document.getElementById('submit-vote-btn').disabled = false;
             });
             
@@ -481,7 +534,6 @@ function loadAssociationsForVoting() {
         }
     });
     
-    // Dodaj przycisk głosowania
     const submitVoteBtn = document.createElement('button');
     submitVoteBtn.id = 'submit-vote-btn';
     submitVoteBtn.className = 'btn btn-primary';
@@ -493,15 +545,10 @@ function loadAssociationsForVoting() {
         if (!selectedVoteBtn) return;
         
         const votedPlayerId = selectedVoteBtn.dataset.playerId;
-        
-        // Wyślij głos
         socket.emit('submitVote', { votedPlayerId });
         
-        // Zablokuj przycisk
         submitVoteBtn.disabled = true;
         submitVoteBtn.textContent = 'Głos oddany';
-        
-        // Pokaż komunikat
         document.getElementById('voted-message').style.display = 'flex';
     });
     
@@ -511,11 +558,6 @@ function loadAssociationsForVoting() {
 function updateVoteProgress() {
     if (!gameState || !gameState.players) return;
     
-    const nonHostPlayers = gameState.players.filter(p => !p.isHost);
-    const votedPlayers = gameState.votes.length;
-    const totalPlayers = nonHostPlayers.length;
-    
-    // Zaktualizuj przyciski głosowania dla tych, którzy już zagłosowali
     gameState.votes.forEach(([voterId, votedId]) => {
         const voteBtn = document.querySelector(`.vote-btn[data-player-id="${votedId}"]`);
         if (voteBtn) {
@@ -605,29 +647,24 @@ function showVoteResults(results) {
     
     resultsContent.innerHTML = resultsHTML;
     
-    // Zaktualizuj tabelę wyników
     updateScoreboard();
 }
 
 function startVoting() {
-    // Przejdź do ekranu głosowania
     document.getElementById('association-section').style.display = 'none';
     document.getElementById('waiting-section').style.display = 'none';
-    document.getElementById('voting-section').style.display = 'block';
+    document.getElementById('decision-section').style.display = 'none';
     document.getElementById('results-section').style.display = 'none';
+    document.getElementById('voting-section').style.display = 'block';
     
-    // Załaduj skojarzenia
     loadAssociationsForVoting();
     
-    // Zresetuj komunikat
     document.getElementById('voted-message').style.display = 'none';
 }
 
 function startNextRound() {
-    // Zatrzymaj timer
     if (timerInterval) clearInterval(timerInterval);
     
-    // Zaktualizuj interfejs
     updateGameInterface();
 }
 
@@ -636,7 +673,6 @@ function updateScoreboard() {
     const scoreboard = document.getElementById('scoreboard');
     if (!scoreboard) return;
     
-    // Posortuj graczy według punktów
     const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
     
     let scoreboardHTML = '';
@@ -659,7 +695,6 @@ function updateScoreboard() {
 
 // Wyniki końcowe
 function showFinalResults() {
-    // Posortuj graczy według punktów
     const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
     const winner = sortedPlayers[0];
     
@@ -711,7 +746,6 @@ function showFinalResults() {
 
 // Obsługa przycisków
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicjalizacja Socket.io
     initSocket();
     
     // Ekran startowy
@@ -726,8 +760,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ekran tworzenia gry
     document.getElementById('create-game-final-btn').addEventListener('click', () => {
         const playerName = document.getElementById('player-name-host').value.trim();
-        const word = document.getElementById('game-word').value.trim();
-        const hint = document.getElementById('game-hint').value.trim();
         const rounds = document.getElementById('rounds-count').value;
         const roundTime = document.getElementById('round-time').value;
         
@@ -736,20 +768,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        if (!word) {
-            showNotification('Wpisz hasło dla graczy!', 'error');
-            return;
-        }
-        
-        if (!hint) {
-            showNotification('Wpisz podpowiedź dla impostora!', 'error');
-            return;
-        }
-        
         socket.emit('createGame', {
             playerName,
-            word,
-            hint,
             rounds,
             roundTime
         });
@@ -810,10 +830,24 @@ document.addEventListener('DOMContentLoaded', () => {
         
         socket.emit('submitAssociation', { association });
         
-        // Ukryj input i pokaż komunikat
         document.getElementById('association-input').style.display = 'none';
         document.getElementById('submit-association-btn').style.display = 'none';
         document.getElementById('submitted-message').style.display = 'flex';
+    });
+    
+    // Nowe przyciski decyzji
+    document.getElementById('vote-impostor-btn').addEventListener('click', () => {
+        socket.emit('submitDecision', { decision: true });
+        document.getElementById('decision-status').textContent = 'Wybrałeś: Głosuj na impostora';
+        document.getElementById('vote-impostor-btn').disabled = true;
+        document.getElementById('continue-game-btn').disabled = true;
+    });
+    
+    document.getElementById('continue-game-btn').addEventListener('click', () => {
+        socket.emit('submitDecision', { decision: false });
+        document.getElementById('decision-status').textContent = 'Wybrałeś: Graj dalej';
+        document.getElementById('vote-impostor-btn').disabled = true;
+        document.getElementById('continue-game-btn').disabled = true;
     });
     
     document.getElementById('next-round-btn').addEventListener('click', () => {
@@ -822,7 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('end-game-btn').addEventListener('click', () => {
         if (confirm('Czy na pewno chcesz zakończyć grę?')) {
-            socket.emit('nextRound'); // Wywoła gameEnded, jeśli to ostatnia runda
+            socket.emit('nextRound');
         }
     });
     
@@ -831,7 +865,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isHost) {
             socket.emit('restartGame');
         } else {
-            // Gracz musi poczekać, aż host zrestartuje grę
             showNotification('Poczekaj, aż host zrestartuje grę', 'info');
         }
     });
