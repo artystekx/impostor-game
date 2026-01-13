@@ -10,7 +10,7 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-user-secret"></i> Gra Impostor stworzona przez Jasia Chmare</h1>
+            <h1><i class="fas fa-user-secret"></i> Gra Impostor</h1>
             <p class="subtitle">Wszyscy dostają hasło, impostor tylko podpowiedź. Znajdź oszusta po skojarzeniach!</p>
         </header>
         
@@ -20,9 +20,8 @@
                 <div class="logo">
                     <i class="fas fa-user-secret"></i>
                 </div>
-                <h2>Witaj w grze Impostor!</h2>
-                <p>Jedna osoba tworzy pokój. Gracze dołączają przez kod. Jeden z graczy jest impostorem - widzi tylko podpowiedź do hasła!</p>
-                <p>W każdej rundzie gracze piszą skojarzenie z hasłem. Impostor musi się ukrywać. Po rundzie głosujecie, czy przejść do głosowania na impostora, czy grać dalej.</p>
+                <h2>Witaj w grze Impostor 2.0!</h2>
+                <p>Nowe funkcje: wybierz liczbę impostorów, tryb gry, głosuj czy zachować hasło i zgaduj hasło jako impostor!</p>
                 
                 <div class="button-group">
                     <button id="create-game-btn" class="btn btn-primary">
@@ -39,7 +38,7 @@
         <div id="create-screen" class="screen">
             <div class="panel">
                 <h2><i class="fas fa-cogs"></i> Tworzenie nowej gry</h2>
-                <p>Hasło będzie losowane automatycznie z bazy haseł.</p>
+                <p>Skonfiguruj ustawienia gry. Hasło będzie losowane automatycznie.</p>
                 
                 <div class="input-group">
                     <label for="player-name-host">
@@ -70,6 +69,29 @@
                             <option value="45" selected>45 sekund</option>
                             <option value="60">60 sekund</option>
                             <option value="90">90 sekund</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="num-impostors">
+                            <i class="fas fa-user-secret"></i> Liczba impostorów:
+                        </label>
+                        <select id="num-impostors">
+                            <option value="1">1 impostor</option>
+                            <option value="2">2 impostorów</option>
+                            <option value="3">3 impostorów</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="game-mode">
+                            <i class="fas fa-gamepad"></i> Tryb gry:
+                        </label>
+                        <select id="game-mode">
+                            <option value="simultaneous">Wszyscy jednocześnie</option>
+                            <option value="sequential">Kolejka (po kolei)</option>
                         </select>
                     </div>
                 </div>
@@ -130,8 +152,8 @@
                 </div>
                 
                 <div class="game-info">
-                    <p><strong>Liczba rund:</strong> <span id="waiting-rounds">4</span> | <strong>Czas na rundę:</strong> <span id="waiting-time">45</span>s</p>
-                    <p><small>Hasło będzie losowane automatycznie dla każdej rundy</small></p>
+                    <p><strong>Tryb gry:</strong> <span id="waiting-game-mode">Wszyscy jednocześnie</span></p>
+                    <p><strong>Impostorzy:</strong> <span id="waiting-impostors">1</span> | <strong>Rundy:</strong> <span id="waiting-rounds">4</span> | <strong>Czas:</strong> <span id="waiting-time">45</span>s</p>
                 </div>
                 
                 <div class="players-section">
@@ -160,7 +182,8 @@
                 
                 <div class="game-info">
                     <p><strong>Kod gry:</strong> <span id="waiting-game-code" class="code-small">ABCDEF</span></p>
-                    <p><strong>Liczba rund:</strong> <span id="waiting-player-rounds">4</span> | <strong>Czas na rundę:</strong> <span id="waiting-player-time">45</span>s</p>
+                    <p><strong>Tryb:</strong> <span id="waiting-player-mode">Wszyscy jednocześnie</span></p>
+                    <p><strong>Impostorzy:</strong> <span id="waiting-player-impostors">1</span> | <strong>Rundy:</strong> <span id="waiting-player-rounds">4</span></p>
                 </div>
                 
                 <div class="players-section">
@@ -180,12 +203,25 @@
                         <h3 id="current-game-name">Gra Impostor</h3>
                         <div class="round-info">
                             <span class="round-badge">Runda <span id="current-round">1</span>/<span id="total-rounds">4</span></span>
+                            <span class="game-mode-badge" id="game-mode-badge">Wszyscy</span>
+                            <span class="impostor-badge">👤<span id="impostor-count">1</span></span>
                             <span class="time-badge" id="timer">45</span>
                         </div>
                     </div>
                     
                     <div id="player-role-display">
                         <!-- Rola gracza będzie wyświetlana tutaj -->
+                    </div>
+                </div>
+                
+                <!-- Sekcja dla trybu sequential - czyja kolej -->
+                <div id="turn-section" style="display: none;">
+                    <div class="turn-info">
+                        <h3><i class="fas fa-user-clock"></i> Kolej gracza:</h3>
+                        <div id="current-turn-player" class="current-turn">
+                            <!-- Aktualny gracz będzie wyświetlany tutaj -->
+                        </div>
+                        <div id="turn-timer" class="turn-timer">30</div>
                     </div>
                 </div>
                 
@@ -203,7 +239,7 @@
                 
                 <div id="association-section">
                     <h3><i class="fas fa-comment-dots"></i> Napisz skojarzenie:</h3>
-                    <p>Wpisz słowo, które kojarzy Ci się z hasłem/podpowiedzią powyżej.</p>
+                    <p id="association-instruction">Wpisz słowo, które kojarzy Ci się z hasłem/podpowiedzią powyżej.</p>
                     
                     <div class="association-input-container">
                         <input type="text" id="association-input" placeholder="Twoje skojarzenie...">
@@ -212,8 +248,26 @@
                         </button>
                     </div>
                     
+                    <!-- Sekcja zgadywania hasła dla impostora -->
+                    <div id="guess-section" style="display: none; margin-top: 20px;">
+                        <h4><i class="fas fa-question-circle"></i> Jesteś impostorem! Spróbuj zgadnąć hasło:</h4>
+                        <div class="guess-input-container">
+                            <input type="text" id="guess-input" placeholder="Twoje zgadywanie...">
+                            <button id="submit-guess-btn" class="btn btn-danger">
+                                <i class="fas fa-lightbulb"></i> Zgadnij
+                            </button>
+                        </div>
+                        <p style="font-size: 0.9rem; color: #fb8f8f; margin-top: 5px;">
+                            Jeśli odgadniesz hasło, wygrasz dodatkowe punkty!
+                        </p>
+                    </div>
+                    
                     <div id="submitted-message" class="success-message" style="display: none;">
                         <i class="fas fa-check-circle"></i> Twoje skojarzenie zostało wysłane!
+                    </div>
+                    
+                    <div id="guessed-message" class="warning-message" style="display: none;">
+                        <i class="fas fa-lightbulb"></i> Twoje zgadywanie zostało wysłane!
                     </div>
                 </div>
                 
@@ -221,7 +275,7 @@
                     <div class="waiting-message">
                         <i class="fas fa-hourglass-half"></i>
                         <h3>Oczekiwanie na innych graczy...</h3>
-                        <p>Wszyscy muszą wysłać swoje skojarzenia zanim przejdziemy dalej.</p>
+                        <p id="waiting-message-text">Wszyscy muszą wysłać swoje skojarzenia zanim przejdziemy dalej.</p>
                         
                         <div class="players-progress">
                             <div id="progress-text">0/0 graczy gotowych</div>
@@ -232,7 +286,7 @@
                     </div>
                 </div>
                 
-                <!-- NOWA SEKCJA: Decyzja po rundzie -->
+                <!-- SEKCJA: Decyzja po rundzie -->
                 <div id="decision-section" style="display: none;">
                     <div class="panel" style="background-color: rgba(15, 21, 48, 0.8); margin-top: 20px;">
                         <h3 style="text-align: center; color: #8f94fb;">
@@ -251,13 +305,25 @@
                             </div>
                         </div>
                         
-                        <div style="text-align: center; margin-top: 30px;">
-                            <button id="vote-impostor-btn" class="btn btn-danger" style="margin-right: 20px; padding: 15px 30px; font-size: 1.2rem;">
-                                <i class="fas fa-user-secret"></i> Głosuj na impostora
-                            </button>
-                            <button id="continue-game-btn" class="btn btn-success" style="padding: 15px 30px; font-size: 1.2rem;">
-                                <i class="fas fa-forward"></i> Graj dalej
-                            </button>
+                        <div class="decision-options">
+                            <div class="keep-word-option" style="margin-bottom: 20px; text-align: center;">
+                                <label style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                                    <input type="checkbox" id="keep-same-word">
+                                    Zachowaj to samo hasło na następną rundę
+                                </label>
+                                <small style="color: #8f94fb; display: block; margin-top: 5px;">
+                                    Jeśli wybierzesz, hasło nie zmieni się w następnej rundzie
+                                </small>
+                            </div>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <button id="vote-impostor-btn" class="btn btn-danger" style="margin-right: 20px; padding: 15px 30px; font-size: 1.2rem;">
+                                    <i class="fas fa-user-secret"></i> Głosuj na impostora
+                                </button>
+                                <button id="continue-game-btn" class="btn btn-success" style="padding: 15px 30px; font-size: 1.2rem;">
+                                    <i class="fas fa-forward"></i> Graj dalej
+                                </button>
+                            </div>
                         </div>
                         
                         <div id="decision-status" style="text-align: center; margin-top: 20px; color: #8f94fb; font-style: italic;">
@@ -270,12 +336,30 @@
                     <h3><i class="fas fa-vote-yea"></i> Głosowanie na impostora</h3>
                     <p>Przeczytaj wszystkie skojarzenia i zagłosuj, kto twoim zdaniem jest impostorem.</p>
                     
+                    <!-- Sekcja zgadywania hasła dla impostora w trybie simultaneous -->
+                    <div id="voting-guess-section" style="display: none; margin-bottom: 30px;">
+                        <div class="panel" style="background-color: rgba(200, 78, 78, 0.1); border-color: #c84e4e;">
+                            <h4 style="color: #fb8f8f;">
+                                <i class="fas fa-lightbulb"></i> Jesteś impostorem! Możesz zgadnąć hasło:
+                            </h4>
+                            <div class="guess-input-container" style="display: flex; gap: 10px; margin-top: 15px;">
+                                <input type="text" id="voting-guess-input" placeholder="Twoje zgadywanie..." style="flex-grow: 1;">
+                                <button id="submit-voting-guess-btn" class="btn btn-danger">
+                                    <i class="fas fa-lightbulb"></i> Zgadnij
+                                </button>
+                            </div>
+                            <p style="font-size: 0.9rem; color: #fb8f8f; margin-top: 10px;">
+                                Jeśli odgadniesz hasło, wygrasz dodatkowe punkty i zakończysz grę!
+                            </p>
+                        </div>
+                    </div>
+                    
                     <div id="associations-list" class="associations-list">
                         <!-- Skojarzenia będą dodawane dynamicznie -->
                     </div>
                     
                     <div class="vote-section">
-                        <h4>Zagłosuj na impostora:</h4>
+                        <h4>Zagłosuj na impostora (możesz głosować na dowolnego gracza):</h4>
                         <div id="vote-options" class="vote-options">
                             <!-- Opcje głosowania będą dodawane dynamicznie -->
                         </div>
@@ -300,6 +384,18 @@
                         </button>
                     </div>
                 </div>
+                
+                <!-- Sekcja gdy impostor odgadł hasło -->
+                <div id="word-guessed-section" style="display: none;">
+                    <div class="panel" style="background-color: rgba(200, 78, 78, 0.1); border-color: #c84e4e; text-align: center;">
+                        <h2 style="color: #fb8f8f;">
+                            <i class="fas fa-trophy"></i> IMPOSTOR ODGADŁ HASŁO!
+                        </h2>
+                        <div id="word-guessed-content">
+                            <!-- Informacje o odgadnięciu hasła -->
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="sidebar">
@@ -314,6 +410,15 @@
                     <h3><i class="fas fa-users"></i> Gracze (<span id="players-count">1</span>)</h3>
                     <div id="game-players-list" class="players-list">
                         <!-- Lista graczy w trakcie gry -->
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-info-circle"></i> Informacje o grze</h3>
+                    <div id="game-info-sidebar">
+                        <p><strong>Tryb:</strong> <span id="sidebar-game-mode">Wszyscy</span></p>
+                        <p><strong>Impostorzy:</strong> <span id="sidebar-impostor-count">1</span></p>
+                        <p><strong>Aktualne hasło:</strong> <span id="sidebar-current-word">-</span></p>
                     </div>
                 </div>
             </div>
