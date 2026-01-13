@@ -308,8 +308,11 @@ function updateGamePlayersList() {
     playersCount.textContent = gameState.players.length;
     
     gameState.players.forEach(player => {
+        // NIE pokazujemy kto jest impostorem w trakcie gry
+        const showImpostor = player.isImpostor && (!gameState.isPlaying || gameState.isVoting);
+        
         const playerCard = document.createElement('div');
-        playerCard.className = `player-card ${player.isImpostor ? 'impostor' : ''} ${player.isHost ? 'host' : ''}`;
+        playerCard.className = `player-card ${showImpostor ? 'impostor' : ''} ${player.isHost ? 'host' : ''}`;
         
         let status = '';
         if (gameState.isPlaying && !gameState.isVoting && !gameState.isDeciding) {
@@ -374,8 +377,9 @@ function updateGameInterface() {
     const wordDisplay = document.getElementById('word-display');
     const roleHint = document.getElementById('role-hint');
     
-    if (isImpostor) {
-        wordDisplay.textContent = gameState.playerWord || gameState.hint;
+    // Host zawsze widzi pełne hasło (nie podpowiedź)
+    if (isImpostor && !isHost) {
+        wordDisplay.textContent = gameState.hint;
         roleHint.innerHTML = '<i class="fas fa-user-secret"></i> Jesteś IMPOSTOREM! Nie znasz hasła, widzisz tylko podpowiedź. Spróbuj zgadnąć hasło!';
         roleHint.style.color = '#fb8f8f';
         
@@ -385,8 +389,12 @@ function updateGameInterface() {
             document.getElementById('guess-section').style.display = 'none';
         }
     } else {
-        wordDisplay.textContent = gameState.playerWord || gameState.word;
-        roleHint.innerHTML = '<i class="fas fa-user-check"></i> Jesteś GRACZEM. Znajdź impostora po jego skojarzeniach!';
+        wordDisplay.textContent = gameState.word;
+        if (isHost) {
+            roleHint.innerHTML = '<i class="fas fa-crown"></i> Jesteś HOSTEM. Znajdź impostora po jego skojarzeniach!';
+        } else {
+            roleHint.innerHTML = '<i class="fas fa-user-check"></i> Jesteś GRACZEM. Znajdź impostora po jego skojarzeniach!';
+        }
         roleHint.style.color = '#8f94fb';
         document.getElementById('guess-section').style.display = 'none';
     }
@@ -399,7 +407,7 @@ function updateGameInterface() {
             turnSection.style.display = 'block';
             const currentPlayer = gameState.players.find(p => p.id === currentTurnPlayerId);
             document.getElementById('current-turn-player').innerHTML = `
-                <div class="player-card ${currentPlayer.isImpostor ? 'impostor' : ''}" style="display: inline-block; padding: 10px 20px;">
+                <div class="player-card" style="display: inline-block; padding: 10px 20px;">
                     <div class="player-name">${currentPlayer.name}</div>
                 </div>
             `;
@@ -431,7 +439,11 @@ function updateGameInterface() {
         document.getElementById('turn-section').style.display = 'none';
         document.getElementById('word-guessed-section').style.display = 'block';
     } else if (gameState.isDeciding) {
-        showDecisionPhase();
+        if (isHost && !gameState.players.find(p => p.id === socket.id).hasDecided) {
+            showHostDecisionPhase();
+        } else {
+            showDecisionPhase();
+        }
     } else if (gameState.isVoting) {
         startVoting();
     } else if (!gameState.isPlaying) {
@@ -559,13 +571,13 @@ function showDecisionPhase() {
     
     displayAssociationsWithNames();
     
-    document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
-    document.getElementById('vote-impostor-btn').disabled = false;
-    document.getElementById('continue-game-btn').disabled = false;
-    
-    // Ukryj opcję zachowania hasła dla nie-hostów
     if (!isHost) {
+        document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
+        document.getElementById('vote-impostor-btn').style.display = 'inline-flex';
+        document.getElementById('continue-game-btn').style.display = 'inline-flex';
         document.getElementById('keep-word-option').style.display = 'none';
+        document.getElementById('vote-impostor-btn').disabled = false;
+        document.getElementById('continue-game-btn').disabled = false;
     }
 }
 
@@ -583,7 +595,6 @@ function showHostDecisionPhase() {
     document.getElementById('decision-status').textContent = 'Jesteś hostem! Zdecyduj czy zachować to samo hasło:';
     document.getElementById('vote-impostor-btn').style.display = 'none';
     document.getElementById('continue-game-btn').style.display = 'none';
-    document.getElementById('host-decision-buttons').style.display = 'block';
     document.getElementById('keep-word-option').style.display = 'block';
 }
 
@@ -838,7 +849,7 @@ function startNextRound() {
 function updateSidebarInfo() {
     document.getElementById('sidebar-game-mode').textContent = gameState.gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy';
     document.getElementById('sidebar-impostor-count').textContent = gameState.numImpostors;
-    document.getElementById('sidebar-current-word').textContent = isImpostor ? gameState.hint : gameState.word;
+    document.getElementById('sidebar-current-word').textContent = isImpostor && !isHost ? gameState.hint : gameState.word;
 }
 
 function showFinalResults() {
