@@ -15,6 +15,8 @@ let turnTimerInterval = null;
 let timeLeft = 45;
 let turnTimeLeft = 30;
 let gameState = null;
+let customWordData = null;
+let selectedWordForGame = null;
 
 // Elementy DOM
 const screens = {
@@ -202,7 +204,6 @@ function initSocket() {
     socket.on('gameEnded', (data) => {
         gameState = data.gameState;
         
-        // Zatrzymaj wszystkie timery
         if (timerInterval) clearInterval(timerInterval);
         if (turnTimerInterval) clearInterval(turnTimerInterval);
         
@@ -212,6 +213,11 @@ function initSocket() {
             } else {
                 showFinalResults('normal');
             }
+            
+            // Pokaż przycisk powrotu na pełnym ekranie po 2 sekundach
+            setTimeout(() => {
+                document.getElementById('fullscreen-back-button').classList.add('active');
+            }, 2000);
         }, 1000);
     });
     
@@ -299,7 +305,6 @@ function updateGamePlayersList() {
     playersCount.textContent = gameState.players.length;
     
     gameState.players.forEach(player => {
-        // POKAZUJEMY impostora TYLKO jeśli gra się skończyła lub gracz jest sobą
         const showImpostor = player.isImpostor && 
             (!gameState.isPlaying || gameState.wordGuessed || gameState.guessFailed || player.id === socket.id);
         
@@ -344,6 +349,14 @@ function startGame() {
     if (playerInfo) {
         isImpostor = playerInfo.isImpostor;
         playerName = playerInfo.name;
+        
+        console.log("Player role check:", {
+            id: playerInfo.id,
+            name: playerInfo.name,
+            isImpostor: playerInfo.isImpostor,
+            gameIsPlaying: gameState.isPlaying,
+            playerWord: gameState.playerWord
+        });
     }
     
     switchScreen('game');
@@ -369,8 +382,9 @@ function updateGameInterface() {
     const wordDisplay = document.getElementById('word-display');
     const roleHint = document.getElementById('role-hint');
     
-    if (isImpostor && gameState.isPlaying) {
-        wordDisplay.textContent = gameState.hint;
+    // KLUCZOWA POPRAWKA: impostor widzi podpowiedź, nie hasło
+    if (isImpostor && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed) {
+        wordDisplay.textContent = gameState.hint; // TYLKO podpowiedź dla impostora
         roleHint.innerHTML = '<i class="fas fa-user-secret"></i> Jesteś IMPOSTOREM! Nie znasz hasła, widzisz tylko podpowiedź. Spróbuj zgadnąć hasło!';
         roleHint.style.color = '#fb8f8f';
         
@@ -385,7 +399,8 @@ function updateGameInterface() {
             document.getElementById('guess-section').style.display = 'none';
         }
     } else {
-        wordDisplay.textContent = gameState.word;
+        // Gracz (nie impostor) widzi hasło
+        wordDisplay.textContent = gameState.word; // Gracz widzi hasło
         if (isHost) {
             roleHint.innerHTML = '<i class="fas fa-crown"></i> Jesteś HOSTEM. Znajdź impostora po jego skojarzeniach!';
         } else {
@@ -446,13 +461,6 @@ function updateGameInterface() {
         document.getElementById('decision-section').style.display = 'none';
         document.getElementById('turn-section').style.display = 'none';
         document.getElementById('word-guessed-section').style.display = 'none';
-        
-        // Gra się skończyła, przejdź do wyników
-        if (gameState.gameEnded) {
-            setTimeout(() => {
-                showFinalResults('normal');
-            }, 1000);
-        }
     } else if (gameState.gameMode === 'simultaneous') {
         document.getElementById('association-section').style.display = 'block';
         document.getElementById('waiting-section').style.display = 'none';
@@ -516,10 +524,6 @@ function startTurnTimer() {
         
         if (turnTimeLeft <= 0) {
             clearInterval(turnTimerInterval);
-            // Automatycznie wyślij puste skojarzenie jeśli czas minął
-            if (gameState.currentTurnPlayerId === socket.id) {
-                socket.emit('submitAssociation', { association: '(brak skojarzenia)' });
-            }
         }
     }, 1000);
 }
@@ -576,9 +580,6 @@ function showDecisionPhase() {
     document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
     document.getElementById('vote-impostor-btn').disabled = false;
     document.getElementById('continue-game-btn').disabled = false;
-    
-    // Ukryj opcję zachowania hasła (teraz zawsze to samo hasło)
-    document.getElementById('keep-word-option').style.display = 'none';
 }
 
 function displayAssociationsWithNames() {
@@ -684,7 +685,6 @@ function loadVoteOptions() {
             });
             voteBtn.classList.add('selected');
             
-            // Dodaj przycisk do oddania głosu jeśli nie istnieje
             if (!document.getElementById('submit-vote-btn')) {
                 const submitVoteBtn = document.createElement('button');
                 submitVoteBtn.id = 'submit-vote-btn';
@@ -787,7 +787,6 @@ function showVoteResults(results, outcome) {
     
     resultsContent.innerHTML = resultsHTML;
     
-    // Pokaż przyciski hosta jeśli gra nie skończona
     if (isHost && gameState.isPlaying && !gameState.gameEnded) {
         document.getElementById('host-controls').style.display = 'flex';
     }
@@ -847,7 +846,12 @@ function startNextRound() {
 function updateSidebarInfo() {
     document.getElementById('sidebar-game-mode').textContent = gameState.gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy';
     document.getElementById('sidebar-impostor-count').textContent = gameState.numImpostors;
-    document.getElementById('sidebar-current-word').textContent = isImpostor && gameState.isPlaying ? gameState.hint : gameState.word;
+    
+    if (isImpostor && gameState.isPlaying) {
+        document.getElementById('sidebar-current-word').textContent = gameState.hint;
+    } else {
+        document.getElementById('sidebar-current-word').textContent = gameState.word;
+    }
 }
 
 function showFinalResults(reason) {
@@ -938,6 +942,94 @@ function showFinalResults(reason) {
     switchScreen('finalResults');
 }
 
+// Funkcje dla opcji zaawansowanych
+function loadWordsTable() {
+    const words = [
+        { word: "KOT", hint: "Zwierzę domowe" },
+        { word: "SAMOCHÓD", hint: "Środek transportu" },
+        { word: "KSIĄŻKA", hint: "Źródło wiedzy" },
+        { word: "TELEFON", hint: "Urządzenie do komunikacji" },
+        { word: "OKNO", hint: "Element budynku" },
+        { word: "DRZEWO", hint: "Roślina" },
+        { word: "SŁOŃCE", hint: "Gwiazda" },
+        { word: "WODA", hint: "Płyn" },
+        { word: "OGIEŃ", hint: "Żywioł" },
+        { word: "ZAMEK", hint: "Budowla" },
+        { word: "PIES", hint: "Przyjaciel człowieka" },
+        { word: "MIASTO", hint: "Duża osada" },
+        { word: "RZEKA", hint: "Płynąca woda" },
+        { word: "GÓRY", hint: "Wysokie tereny" },
+        { word: "MORZE", hint: "Duża woda" },
+        { word: "LAS", hint: "Wiele drzew" },
+        { word: "SZKŁO", hint: "Przezroczysty materiał" },
+        { word: "PAPIER", hint: "Do pisania" },
+        { word: "STÓŁ", hint: "Meble" },
+        { word: "KRZESŁO", hint: "Do siedzenia" }
+    ];
+    
+    let tableHTML = `
+        <table class="words-table">
+            <thead>
+                <tr>
+                    <th>Słowo</th>
+                    <th>Podpowiedź</th>
+                    <th>Akcja</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    words.forEach(wordPair => {
+        tableHTML += `
+            <tr>
+                <td><strong>${wordPair.word}</strong></td>
+                <td>${wordPair.hint}</td>
+                <td>
+                    <button class="word-select-btn" data-word="${wordPair.word}" data-hint="${wordPair.hint}">
+                        Wybierz
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+    
+    document.getElementById('words-table-container').innerHTML = tableHTML;
+    
+    // Dodaj event listeners do przycisków wyboru
+    document.querySelectorAll('.word-select-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const word = this.getAttribute('data-word');
+            const hint = this.getAttribute('data-hint');
+            
+            // Zresetuj wszystkie przyciski
+            document.querySelectorAll('.word-select-btn').forEach(b => {
+                b.classList.remove('selected');
+                b.textContent = 'Wybierz';
+            });
+            
+            // Zaznacz wybrany przycisk
+            this.classList.add('selected');
+            this.textContent = 'Wybrano ✓';
+            
+            // Zapisz wybrane słowo
+            selectedWordForGame = { word, hint };
+            
+            // Pokaż informację o wybranym słowie
+            document.getElementById('selected-word-info').style.display = 'block';
+            document.getElementById('selected-word-text').textContent = word;
+            document.getElementById('selected-hint-text').textContent = `Podpowiedź: ${hint}`;
+            
+            // Aktywuj przycisk potwierdzenia
+            document.getElementById('confirm-word-btn').disabled = false;
+        });
+    });
+}
+
 // Obsługa przycisków
 document.addEventListener('DOMContentLoaded', () => {
     initSocket();
@@ -969,12 +1061,68 @@ document.addEventListener('DOMContentLoaded', () => {
             rounds,
             roundTime,
             numImpostors,
-            gameMode
+            gameMode,
+            customWordData: selectedWordForGame
         });
+        
+        // Zresetuj wybrane słowo
+        selectedWordForGame = null;
     });
     
     document.getElementById('back-to-start-from-create').addEventListener('click', () => {
         switchScreen('start');
+    });
+    
+    // Przycisk opcji zaawansowanych
+    document.getElementById('advanced-options-btn').addEventListener('click', () => {
+        document.getElementById('advanced-options-modal').style.display = 'flex';
+        document.getElementById('password-section').style.display = 'block';
+        document.getElementById('word-selection-section').style.display = 'none';
+        document.getElementById('advanced-password').value = '';
+    });
+    
+    // Zamykanie modala
+    document.querySelector('.close-modal').addEventListener('click', () => {
+        document.getElementById('advanced-options-modal').style.display = 'none';
+    });
+    
+    // Sprawdzanie hasła
+    document.getElementById('check-password-btn').addEventListener('click', () => {
+        const password = document.getElementById('advanced-password').value;
+        
+        if (password === 'jasiu23#') {
+            document.getElementById('password-section').style.display = 'none';
+            document.getElementById('word-selection-section').style.display = 'block';
+            
+            // Załaduj tabelę słów
+            loadWordsTable();
+            
+            // Zresetuj wybrane słowo
+            selectedWordForGame = null;
+            document.getElementById('selected-word-info').style.display = 'none';
+            document.getElementById('confirm-word-btn').disabled = true;
+        } else {
+            showNotification('Niepoprawne hasło!', 'error');
+        }
+    });
+    
+    // Potwierdzenie wyboru słowa
+    document.getElementById('confirm-word-btn').addEventListener('click', () => {
+        if (selectedWordForGame) {
+            showNotification(`Wybrano słowo: ${selectedWordForGame.word}`, 'success');
+            document.getElementById('advanced-options-modal').style.display = 'none';
+        }
+    });
+    
+    // Czyszczenie wyboru
+    document.getElementById('clear-selection-btn').addEventListener('click', () => {
+        selectedWordForGame = null;
+        document.querySelectorAll('.word-select-btn').forEach(b => {
+            b.classList.remove('selected');
+            b.textContent = 'Wybierz';
+        });
+        document.getElementById('selected-word-info').style.display = 'none';
+        document.getElementById('confirm-word-btn').disabled = true;
     });
     
     // Ekran dołączania do gry
@@ -1087,6 +1235,14 @@ document.addEventListener('DOMContentLoaded', () => {
         switchScreen('start');
     });
     
+    // Przycisk powrotu na pełnym ekranie
+    document.getElementById('fullscreen-back-to-menu').addEventListener('click', () => {
+        document.getElementById('fullscreen-back-button').classList.remove('active');
+        socket.disconnect();
+        initSocket();
+        switchScreen('start');
+    });
+    
     // Enter w polu skojarzenia
     document.getElementById('association-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -1104,5 +1260,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Automatyczna wielka litera w kodzie gry
     document.getElementById('game-code-input').addEventListener('input', function(e) {
         this.value = this.value.toUpperCase();
+    });
+    
+    // Zamykanie modala po kliknięciu poza nim
+    document.getElementById('advanced-options-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.style.display = 'none';
+        }
     });
 });
