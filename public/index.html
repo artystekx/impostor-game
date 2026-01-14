@@ -124,6 +124,119 @@
             font-size: 2rem;
             padding: 25px 50px;
         }
+
+        /* Style dla sekcji własnego słowa */
+        .custom-word-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(78, 84, 200, 0.1);
+            border-radius: 10px;
+            border: 1px solid #4e54c8;
+        }
+
+        .custom-word-section h4 {
+            color: #8f94fb;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Style dla chatu */
+        .chat-container {
+            background-color: rgba(22, 33, 62, 0.9);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(78, 84, 200, 0.3);
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            margin-bottom: 15px;
+            color: #8f94fb;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 10px;
+        }
+
+        .chat-message {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: rgba(15, 21, 48, 0.5);
+            border-radius: 8px;
+            border-left: 3px solid #4e54c8;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .message-player {
+            font-weight: bold;
+            color: #8f94fb;
+        }
+
+        .message-round {
+            color: #8f94fb;
+            font-style: italic;
+            font-size: 0.8rem;
+        }
+
+        .message-time {
+            color: #b0b0d0;
+            font-size: 0.8rem;
+        }
+
+        .message-text {
+            color: #ffffff;
+            word-wrap: break-word;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chat-input {
+            flex-grow: 1;
+            padding: 12px;
+            background: rgba(15, 21, 48, 0.8);
+            border: 1px solid rgba(45, 53, 97, 0.8);
+            color: #ffffff;
+            border-radius: 8px;
+        }
+
+        #send-chat-btn {
+            background: #4e54c8;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Responsywność dla chatu */
+        @media (max-width: 1100px) {
+            .sidebar {
+                grid-template-columns: 1fr;
+            }
+            
+            .chat-container {
+                height: 300px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -510,6 +623,23 @@
                         <p><strong>Aktualne hasło:</strong> <span id="sidebar-current-word">-</span></p>
                     </div>
                 </div>
+
+                <!-- Sekcja chatu -->
+                <div class="sidebar-section chat-container">
+                    <div class="chat-header">
+                        <h3><i class="fas fa-comments"></i> Czat</h3>
+                        <span id="chat-round-indicator">Runda: 1</span>
+                    </div>
+                    <div id="chat-messages" class="chat-messages">
+                        <!-- Wiadomości czatu będą dodawane dynamicznie -->
+                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Napisz wiadomość..." maxlength="200">
+                        <button id="send-chat-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -559,18 +689,41 @@
                 
                 <div id="word-selection-section" style="display: none;">
                     <h3 style="color: #8f94fb; margin-bottom: 20px;">Wybierz słowo dla pierwszej rundy</h3>
-                    <p style="color: #b0b0d0; margin-bottom: 20px;">Wybierz jedno z poniższych słów, które będzie użyte w pierwszej rundzie:</p>
+                    <p style="color: #b0b0d0; margin-bottom: 20px;">Wybierz jedno z poniższych słów lub wprowadź własne:</p>
                     
-                    <div id="words-table-container" style="margin-bottom: 30px;">
+                    <!-- Sekcja własnego słowa -->
+                    <div class="custom-word-section">
+                        <h4><i class="fas fa-edit"></i> Własne słowo</h4>
+                        <div class="input-group">
+                            <label for="custom-word">Słowo:</label>
+                            <input type="text" id="custom-word" placeholder="Wprowadź własne słowo">
+                        </div>
+                        <div class="input-group">
+                            <label for="custom-hint">Podpowiedź dla impostora:</label>
+                            <input type="text" id="custom-hint" placeholder="Wprowadź podpowiedź">
+                        </div>
+                        <div class="button-group" style="margin-top: 15px;">
+                            <button id="use-custom-word-btn" class="btn btn-primary">
+                                <i class="fas fa-check"></i> Użyj własnego słowa
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabela z predefiniowanymi słowami -->
+                    <div id="words-table-container" style="margin-bottom: 30px; margin-top: 30px;">
                         <!-- Tabela słów zostanie dodana dynamicznie -->
                     </div>
                     
+                    <!-- Informacja o wybranym słowie -->
                     <div id="selected-word-info" style="background: rgba(78, 84, 200, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 30px; display: none;">
                         <h4 style="color: #8ffb8f; margin-bottom: 10px;">
                             <i class="fas fa-check-circle"></i> Wybrano słowo
                         </h4>
                         <p style="color: #ffffff; font-size: 1.3rem; margin-bottom: 5px;" id="selected-word-text"></p>
                         <p style="color: #b0b0d0;" id="selected-hint-text"></p>
+                        <p style="color: #8f94fb; font-size: 0.9rem; margin-top: 5px;">
+                            <i class="fas fa-info-circle"></i> To słowo będzie użyte w pierwszej rundzie
+                        </p>
                     </div>
                     
                     <div class="button-group">
