@@ -57,7 +57,7 @@ const wordPairs = [
 const games = new Map();
 
 class Game {
-  constructor(code, hostId, rounds, roundTime, numImpostors, gameMode) {
+  constructor(code, hostId, rounds, roundTime, numImpostors, gameMode, customWordData = null) {
     this.code = code;
     this.hostId = hostId;
     this.rounds = parseInt(rounds);
@@ -80,11 +80,19 @@ class Game {
     this.currentTurnIndex = 0;
     this.turnOrder = [];
     this.turnTimer = null;
-    this.votingTimeout = null; // Dodano: timeout dla głosowania
+    this.votingTimeout = null;
+    this.customWordData = customWordData;
     
-    this.currentWordPair = this.getRandomWordPair();
-    this.word = this.currentWordPair.word;
-    this.hint = this.currentWordPair.hint;
+    if (customWordData && customWordData.word && customWordData.hint) {
+      this.currentWordPair = customWordData;
+      this.word = customWordData.word;
+      this.hint = customWordData.hint;
+    } else {
+      this.currentWordPair = this.getRandomWordPair();
+      this.word = this.currentWordPair.word;
+      this.hint = this.currentWordPair.hint;
+    }
+    
     this.wordGuessed = false;
     this.guessFailed = false;
     this.gameEnded = false;
@@ -136,28 +144,25 @@ class Game {
     this.impostorIds = [];
     const allPlayers = Array.from(this.players.values());
     
-    // Zapewnij, że jest przynajmniej jeden impostor
-    if (allPlayers.length > 0) {
-      // Zresetuj role wszystkich graczy
-      for (const player of allPlayers) {
-        player.isImpostor = false;
-      }
-      
-      // Losowo wybierz impostorów spośród WSZYSTKICH graczy (w tym hosta)
-      const shuffled = [...allPlayers].sort(() => 0.5 - Math.random());
-      const impostorCount = Math.min(this.numImpostors, allPlayers.length);
-      
-      for (let i = 0; i < impostorCount; i++) {
-        const impostorId = shuffled[i].id;
-        this.impostorIds.push(impostorId);
-        const player = this.players.get(impostorId);
-        if (player) {
-          player.isImpostor = true;
-        }
-      }
-      
-      console.log(`Game ${this.code}: Assigned impostors: ${this.impostorIds.join(', ')}`);
+    // Zresetuj role wszystkich graczy
+    for (const player of allPlayers) {
+      player.isImpostor = false;
     }
+    
+    // Losowo wybierz impostorów spośród WSZYSTKICH graczy (w tym hosta)
+    const shuffled = [...allPlayers].sort(() => 0.5 - Math.random());
+    const impostorCount = Math.min(this.numImpostors, allPlayers.length);
+    
+    for (let i = 0; i < impostorCount; i++) {
+      const impostorId = shuffled[i].id;
+      this.impostorIds.push(impostorId);
+      const player = this.players.get(impostorId);
+      if (player) {
+        player.isImpostor = true;
+      }
+    }
+    
+    console.log(`Game ${this.code}: Assigned impostors: ${this.impostorIds.join(', ')}`);
     
     // Reset stanu graczy
     for (const player of this.players.values()) {
@@ -175,10 +180,12 @@ class Game {
     this.decisions.clear();
     this.guesses.clear();
     
-    // Losuj nowe hasło na start gry
-    this.currentWordPair = this.getRandomWordPair();
-    this.word = this.currentWordPair.word;
-    this.hint = this.currentWordPair.hint;
+    // Jeśli nie ma custom słowa, losuj nowe
+    if (!this.customWordData) {
+      this.currentWordPair = this.getRandomWordPair();
+      this.word = this.currentWordPair.word;
+      this.hint = this.currentWordPair.hint;
+    }
     
     if (this.gameMode === 'sequential') {
       this.prepareTurnOrder();
@@ -188,11 +195,9 @@ class Game {
   }
 
   prepareTurnOrder() {
-    // Host też jest w kolejce w trybie sequential
     const allPlayers = Array.from(this.players.values());
     this.turnOrder = [...allPlayers].sort(() => 0.5 - Math.random()).map(p => p.id);
     this.currentTurnIndex = 0;
-    console.log(`Game ${this.code}: Turn order: ${this.turnOrder.join(', ')}`);
   }
 
   getCurrentTurnPlayerId() {
@@ -327,7 +332,6 @@ class Game {
     this.isDeciding = false;
     this.votes.clear();
     
-    // Ustaw timeout dla głosowania (30 sekund)
     if (this.votingTimeout) {
       clearTimeout(this.votingTimeout);
     }
@@ -350,7 +354,6 @@ class Game {
       .every(p => this.votes.has(p.id));
     
     if (allVoted) {
-      // Wyczyść timeout jeśli wszyscy zagłosowali
       if (this.votingTimeout) {
         clearTimeout(this.votingTimeout);
         this.votingTimeout = null;
@@ -390,23 +393,19 @@ class Game {
   }
 
   handleVoteResults(voteResults) {
-    // Sprawdź czy ktoś został wyrzucony
     const someoneVotedOut = voteResults.votedOutIds.length > 0 && voteResults.maxVotes > 0;
     
     if (someoneVotedOut) {
-      // Sprawdź czy wyrzucony jest impostorem
       const votedOutId = voteResults.votedOutIds[0];
       const wasImpostor = this.impostorIds.includes(votedOutId);
       
       if (wasImpostor) {
-        // Usuń impostora z gry
         const player = this.players.get(votedOutId);
         if (player) {
           player.isImpostor = false;
         }
         this.impostorIds = this.impostorIds.filter(id => id !== votedOutId);
         
-        // Jeśli nie ma już impostorów, gracze wygrywają
         if (this.impostorIds.length === 0) {
           this.isPlaying = false;
           this.gameEnded = true;
@@ -426,7 +425,6 @@ class Game {
           impostorsRemaining: this.impostorIds.length
         };
       } else {
-        // Wyrzucono zwykłego gracza
         return {
           type: 'innocentVotedOut',
           votedOutId,
@@ -435,7 +433,6 @@ class Game {
         };
       }
     } else {
-      // Nikt nie został wyrzucony (remis lub nikt nie zagłosował)
       return {
         type: 'noOneVotedOut',
         impostorsRemaining: this.impostorIds.length
@@ -469,14 +466,6 @@ class Game {
       this.prepareTurnOrder();
     }
     
-    // ZAWSZE zachowujemy to samo hasło
-    if (!keepSameWord) {
-      this.currentWordPair = this.getRandomWordPair();
-      this.word = this.currentWordPair.word;
-      this.hint = this.currentWordPair.hint;
-    }
-    
-    // Wyczyść timeout jeśli istnieje
     if (this.votingTimeout) {
       clearTimeout(this.votingTimeout);
       this.votingTimeout = null;
@@ -515,8 +504,7 @@ class Game {
       players: Array.from(this.players.values()).map(p => ({
         id: p.id,
         name: p.name,
-        // POKAZUJEMY TYLKO WŁASNĄ ROLĘ
-        isImpostor: p.isImpostor && (playerId === p.id || !this.isPlaying || this.guessFailed || this.wordGuessed),
+        isImpostor: p.isImpostor,
         isHost: p.isHost,
         hasSubmitted: p.hasSubmitted,
         hasDecided: p.hasDecided,
@@ -538,12 +526,11 @@ class Game {
     if (playerId) {
       const player = this.players.get(playerId);
       if (player) {
-        // ZAWSZE wysyłamy właściwe słowo dla gracza
-        if (player.isImpostor && this.isPlaying) {
+        // KLUCZOWA POPRAWKA: impostor zawsze widzi podpowiedź, nie hasło!
+        if (player.isImpostor && this.isPlaying && !this.wordGuessed && !this.guessFailed) {
           state.playerWord = this.hint; // Impostor widzi podpowiedź
           state.isImpostor = true;
           
-          // Dodajemy listę współimpostorów (bez siebie)
           state.coImpostors = this.impostorIds
             .filter(id => id !== playerId)
             .map(id => {
@@ -581,14 +568,14 @@ io.on('connection', (socket) => {
   console.log('Nowe połączenie:', socket.id);
   
   socket.on('createGame', (data) => {
-    const { playerName, rounds, roundTime, numImpostors, gameMode } = data;
+    const { playerName, rounds, roundTime, numImpostors, gameMode, customWordData } = data;
     
     let code;
     do {
       code = generateGameCode();
     } while (games.has(code));
     
-    const game = new Game(code, socket.id, rounds, roundTime, numImpostors, gameMode);
+    const game = new Game(code, socket.id, rounds, roundTime, numImpostors, gameMode, customWordData);
     games.set(code, game);
     
     game.addPlayer(socket.id, playerName || 'Host');
@@ -776,8 +763,7 @@ io.on('connection', (socket) => {
             gameState: game.getGameState()
           });
         } else {
-          // Większość chce grać dalej - zachowujemy to samo hasło i zaczynamy nową rundę
-          game.nextRound(true); // ZAWSZE to samo hasło
+          game.nextRound(true);
           io.to(gameCode).emit('nextRoundStarted', {
             gameState: game.getGameState()
           });
@@ -812,7 +798,6 @@ io.on('connection', (socket) => {
           gameState: game.getGameState()
         });
         
-        // Jeśli gra się skończyła (wszyscy impostorzy wyeliminowani)
         if (voteOutcome.gameEnded) {
           setTimeout(() => {
             io.to(gameCode).emit('gameEnded', {
@@ -833,7 +818,6 @@ io.on('connection', (socket) => {
     
     if (socket.id !== game.hostId) return;
     
-    // Sprawdź czy gra się skończyła
     if (game.gameEnded || game.currentRound >= game.rounds) {
       io.to(gameCode).emit('gameEnded', {
         gameState: game.getGameState()
@@ -846,7 +830,6 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Sprawdź czy są jeszcze impostorzy
     if (game.impostorIds.length === 0) {
       io.to(gameCode).emit('gameEnded', {
         reason: 'allImpostorsFound',
@@ -855,7 +838,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    game.nextRound(true); // ZAWSZE to samo hasło
+    game.nextRound(true);
     
     io.to(gameCode).emit('nextRoundStarted', {
       gameState: game.getGameState()
@@ -889,6 +872,9 @@ io.on('connection', (socket) => {
     }
     
     game.impostorIds = [];
+    
+    // Zresetuj custom słowo
+    game.customWordData = null;
     game.currentWordPair = game.getRandomWordPair();
     game.word = game.currentWordPair.word;
     game.hint = game.currentWordPair.hint;
