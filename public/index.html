@@ -6,6 +6,125 @@
     <title>Impostor - Gra online</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Dodatkowe style dla modal i tabeli słów */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #4e54c8;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .modal-header h2 {
+            color: #8f94fb;
+            font-size: 1.8rem;
+        }
+        
+        .close-modal {
+            font-size: 2rem;
+            color: #fb8f8f;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        
+        .words-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .words-table th {
+            background: rgba(78, 84, 200, 0.3);
+            padding: 15px;
+            text-align: left;
+            color: #8f94fb;
+            border-bottom: 2px solid #4e54c8;
+        }
+        
+        .words-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(78, 84, 200, 0.2);
+            color: #b0b0d0;
+        }
+        
+        .words-table tr:hover {
+            background: rgba(78, 84, 200, 0.1);
+        }
+        
+        .word-select-btn {
+            background: #4e54c8;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .word-select-btn:hover {
+            background: #8f94fb;
+        }
+        
+        .word-select-btn.selected {
+            background: #4ec84e;
+        }
+        
+        .fullscreen-back-btn {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .fullscreen-back-btn.active {
+            display: flex;
+        }
+        
+        .fullscreen-back-btn h2 {
+            color: white;
+            font-size: 3rem;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        .fullscreen-back-btn .btn {
+            font-size: 2rem;
+            padding: 25px 50px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -93,6 +212,12 @@
                             <option value="sequential">Kolejka (po kolei)</option>
                         </select>
                     </div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="advanced-options-btn" class="btn btn-secondary">
+                        <i class="fas fa-sliders-h"></i> Opcje zaawansowane
+                    </button>
                 </div>
                 
                 <div class="button-group">
@@ -305,20 +430,6 @@
                         </div>
                         
                         <div class="decision-options">
-                            <!-- Opcja zachowania hasła tylko dla hosta -->
-                            <div id="keep-word-option" class="keep-word-option" style="display: none; margin-bottom: 20px; text-align: center;">
-                                <h4 style="color: #8f94fb;">Czy zachować to samo hasło?</h4>
-                                <div style="display: flex; gap: 20px; justify-content: center; margin-top: 15px;">
-                                    <button id="keep-word-btn" class="btn btn-success">
-                                        <i class="fas fa-lock"></i> Zachowaj to samo hasło
-                                    </button>
-                                    <button id="new-word-btn" class="btn btn-secondary">
-                                        <i class="fas fa-random"></i> Losuj nowe hasło
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Przyciski decyzji dla wszystkich graczy -->
                             <div id="vote-buttons" style="text-align: center; margin-top: 30px;">
                                 <button id="vote-impostor-btn" class="btn btn-danger" style="margin-right: 20px; padding: 15px 30px; font-size: 1.2rem;">
                                     <i class="fas fa-user-secret"></i> Głosuj na impostora
@@ -326,11 +437,6 @@
                                 <button id="continue-game-btn" class="btn btn-success" style="padding: 15px 30px; font-size: 1.2rem;">
                                     <i class="fas fa-forward"></i> Graj dalej
                                 </button>
-                            </div>
-                            
-                            <!-- Przyciski decyzji tylko dla hosta -->
-                            <div id="host-decision-buttons" style="display: none; text-align: center; margin-top: 30px;">
-                                <!-- Przyciski będą pokazywane tylko dla hosta w showHostDecisionPhase -->
                             </div>
                         </div>
                         
@@ -423,6 +529,68 @@
                     </button>
                 </div>
             </div>
+        </div>
+        
+        <!-- Modal opcji zaawansowanych -->
+        <div id="advanced-options-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-sliders-h"></i> Opcje zaawansowane</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                
+                <div id="password-section">
+                    <h3 style="color: #8f94fb; margin-bottom: 20px;">Dostęp do zaawansowanych ustawień</h3>
+                    <p style="color: #b0b0d0; margin-bottom: 20px;">Aby uzyskać dostęp do opcji wyboru słowa, wprowadź hasło:</p>
+                    
+                    <div class="input-group" style="margin-bottom: 30px;">
+                        <label for="advanced-password">
+                            <i class="fas fa-lock"></i> Hasło:
+                        </label>
+                        <input type="password" id="advanced-password" placeholder="Wprowadź hasło">
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="check-password-btn" class="btn btn-primary">
+                            <i class="fas fa-unlock"></i> Odblokuj opcje
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="word-selection-section" style="display: none;">
+                    <h3 style="color: #8f94fb; margin-bottom: 20px;">Wybierz słowo dla pierwszej rundy</h3>
+                    <p style="color: #b0b0d0; margin-bottom: 20px;">Wybierz jedno z poniższych słów, które będzie użyte w pierwszej rundzie:</p>
+                    
+                    <div id="words-table-container" style="margin-bottom: 30px;">
+                        <!-- Tabela słów zostanie dodana dynamicznie -->
+                    </div>
+                    
+                    <div id="selected-word-info" style="background: rgba(78, 84, 200, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 30px; display: none;">
+                        <h4 style="color: #8ffb8f; margin-bottom: 10px;">
+                            <i class="fas fa-check-circle"></i> Wybrano słowo
+                        </h4>
+                        <p style="color: #ffffff; font-size: 1.3rem; margin-bottom: 5px;" id="selected-word-text"></p>
+                        <p style="color: #b0b0d0;" id="selected-hint-text"></p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="confirm-word-btn" class="btn btn-success" disabled>
+                            <i class="fas fa-check"></i> Potwierdź wybór
+                        </button>
+                        <button id="clear-selection-btn" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Wyczyść wybór
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Przycisk powrotu na pełnym ekranie -->
+        <div id="fullscreen-back-button" class="fullscreen-back-btn">
+            <h2>Runda zakończona!</h2>
+            <button id="fullscreen-back-to-menu" class="btn btn-primary">
+                <i class="fas fa-home"></i> Wróć do menu
+            </button>
         </div>
         
         <!-- Powiadomienie -->
