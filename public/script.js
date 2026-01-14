@@ -400,7 +400,7 @@ function updateGameInterface() {
             roleHint.innerHTML += `<br><small>Współimpostorzy: ${gameState.coImpostors.join(', ')}</small>`;
         }
         
-        // Impostor może wysyłać skojarzenia w każdej rundzie!
+        // KLUCZOWA POPRAWKA: Impostor może wysyłać skojarzenia w każdej rundzie!
         document.getElementById('guess-section').style.display = 'block';
         
     } else {
@@ -451,19 +451,38 @@ function updateGameInterface() {
                 </div>
             `;
             
+            // KLUCZOWA POPRAWKA: Sprawdzamy czy to moja kolej i czy już wysłałem skojarzenie
+            const player = gameState.players.find(p => p.id === socket.id);
+            
             if (currentTurnPlayerId === socket.id) {
                 // To moja kolej
-                document.getElementById('association-section').style.display = 'block';
-                document.getElementById('association-instruction').textContent = 'Twoja kolej! Wpisz skojarzenie:';
-                document.getElementById('association-input').disabled = false;
-                document.getElementById('submit-association-btn').disabled = false;
-                
-                startTurnTimer();
+                if (player && player.hasSubmitted) {
+                    // Już wysłałem skojarzenie - pokazuję tylko komunikat
+                    document.getElementById('waiting-section').style.display = 'block';
+                    document.getElementById('waiting-message-text').textContent = 'Czekam na innych graczy...';
+                    document.getElementById('association-section').style.display = 'none';
+                } else {
+                    // Nie wysłałem jeszcze skojarzenia
+                    document.getElementById('association-section').style.display = 'block';
+                    document.getElementById('waiting-section').style.display = 'none';
+                    document.getElementById('association-instruction').textContent = 'Twoja kolej! Wpisz skojarzenie:';
+                    document.getElementById('association-input').disabled = false;
+                    document.getElementById('submit-association-btn').disabled = false;
+                    document.getElementById('association-input').value = '';
+                    document.getElementById('submitted-message').style.display = 'none';
+                    
+                    // KLUCZOWA POPRAWKA: Resetujemy pole input
+                    document.getElementById('association-input').style.display = 'block';
+                    document.getElementById('submit-association-btn').style.display = 'flex';
+                }
             } else {
                 // Nie moja kolej
+                document.getElementById('association-section').style.display = 'none';
                 document.getElementById('waiting-section').style.display = 'block';
                 document.getElementById('waiting-message-text').textContent = `Oczekiwanie na ${currentPlayer.name}...`;
             }
+            
+            startTurnTimer();
         }
     } else {
         // Tryb simultaneous (wszyscy jednocześnie)
@@ -486,6 +505,11 @@ function updateGameInterface() {
         }
         
         startTimer();
+    }
+    
+    // KLUCZOWA POPRAWKA: Zawsze pokazujemy sekcję guess dla impostora w trybie simultaneous
+    if (isImpostor && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed && gameState.gameMode === 'simultaneous') {
+        document.getElementById('guess-section').style.display = 'block';
     }
     
     if (isHost && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed && !gameState.isVoting && !gameState.isDeciding) {
@@ -806,6 +830,16 @@ function showGuessFailed(data) {
 function startNextRound() {
     if (timerInterval) clearInterval(timerInterval);
     if (turnTimerInterval) clearInterval(turnTimerInterval);
+    
+    // KLUCZOWA POPRAWKA: Resetujemy stan inputów dla nowej rundy
+    document.getElementById('association-input').value = '';
+    document.getElementById('guess-input').value = '';
+    document.getElementById('submitted-message').style.display = 'none';
+    document.getElementById('guessed-message').style.display = 'none';
+    document.getElementById('association-input').style.display = 'block';
+    document.getElementById('submit-association-btn').style.display = 'flex';
+    document.getElementById('guess-input').style.display = 'block';
+    document.getElementById('submit-guess-btn').style.display = 'flex';
     
     updateGameInterface();
 }
