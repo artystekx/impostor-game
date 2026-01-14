@@ -360,6 +360,13 @@ class Game {
         console.log(`Game ${this.code}: Voting timeout - forcing vote calculation`);
         const voteResults = this.calculateVoteResults();
         this.handleVoteResults(voteResults);
+        
+        // Powiadom wszystkich graczy
+        io.to(this.code).emit('voteResults', {
+          results: voteResults,
+          outcome: this.handleVoteResults(voteResults),
+          gameState: this.getGameState()
+        });
       }
     }, 30000);
     
@@ -539,17 +546,30 @@ class Game {
     return this.getGameState();
   }
 
-  addChatMessage(playerId, message) {
+  endGame() {
+    this.isPlaying = false;
+    this.gameEnded = true;
+    return this.getGameState();
+  }
+
+  addChatMessage(playerId, message, type = 'chat') {
     const player = this.players.get(playerId);
-    if (!player) return null;
+    let playerName = 'SYSTEM';
+    
+    if (player) {
+      playerName = player.name;
+    } else if (type === 'system') {
+      playerName = 'SYSTEM';
+    }
     
     const chatMessage = {
       id: Date.now(),
       playerId: playerId,
-      playerName: player.name,
+      playerName: playerName,
       message: message,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      round: this.currentRound
+      round: this.currentRound,
+      type: type
     };
     
     this.chatMessages.push(chatMessage);
@@ -754,10 +774,23 @@ io.on('connection', (socket) => {
     
     const allSubmitted = game.submitAssociation(socket.id, association);
     
+    // Dodaj wiadomość do czatu dla trybu kolejka
+    if (game.gameMode === 'sequential') {
+      const player = game.players.get(socket.id);
+      if (player) {
+        const chatMessage = game.addChatMessage(socket.id, association || '(pominął)', 'association');
+        io.to(gameCode).emit('newChatMessage', {
+          chatMessage,
+          gameState: game.getGameState()
+        });
+      }
+    }
+    
     // Wyślij zaktualizowany stan gry do wszystkich
     const gameState = game.getGameState();
     io.to(gameCode).emit('associationSubmitted', {
       playerId: socket.id,
+      association: association,
       gameState: gameState
     });
     
@@ -795,6 +828,23 @@ io.on('connection', (socket) => {
     const game = games.get(gameCode);
     
     if (!game.isPlaying || game.wordGuessed || game.guessFailed) return;
+    
+    // Dodaj wiadomość do czatu
+    const player = game.players.get(socket.id);
+    if (player) {
+      const chatMessage = game.addChatMessage(socket.id, `Zgadł: "${guess}"`, 'guess');
+      io.to(gameCode).emit('newChatMessage', {
+        chatMessage,
+        gameState: game.getGameState()
+      });
+      
+      // Powiadom o zgadywaniu
+      io.to(gameCode).emit('guessSubmitted', {
+        playerId: socket.id,
+        guess: guess,
+        gameState: game.getGameState()
+      });
+    }
     
     const result = game.submitGuess(socket.id, guess);
     
@@ -945,6 +995,22 @@ io.on('connection', (socket) => {
     });
   });
   
+  socket.on('endGame', () => {
+    const gameCode = socket.gameCode;
+    if (!gameCode || !games.has(gameCode)) return;
+    
+    const game = games.get(gameCode);
+    
+    if (socket.id !== game.hostId) return;
+    
+    game.endGame();
+    
+    io.to(gameCode).emit('gameEnded', {
+      reason: 'manual',
+      gameState: game.getGameState()
+    });
+  });
+  
   socket.on('restartGame', () => {
     const gameCode = socket.gameCode;
     if (!gameCode || !games.has(gameCode)) return;
@@ -971,7 +1037,7 @@ io.on('connection', (socket) => {
     
     if (!game.isPlaying) return;
     
-    const chatMessage = game.addChatMessage(socket.id, message);
+    const chatMessage = game.addChatMessage(socket.id, message, 'chat');
     
     if (chatMessage) {
       io.to(gameCode).emit('newChatMessage', {
