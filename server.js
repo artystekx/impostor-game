@@ -1,3 +1,5 @@
+[file name]: server.js
+[file content begin]
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -80,6 +82,7 @@ class Game {
     this.currentTurnIndex = 0;
     this.turnOrder = [];
     this.turnTimer = null;
+    this.votingTimeout = null; // Dodano: timeout dla głosowania
     
     this.currentWordPair = this.getRandomWordPair();
     this.word = this.currentWordPair.word;
@@ -137,14 +140,25 @@ class Game {
     
     // Zapewnij, że jest przynajmniej jeden impostor
     if (allPlayers.length > 0) {
+      // Zresetuj role wszystkich graczy
+      for (const player of allPlayers) {
+        player.isImpostor = false;
+      }
+      
       // Losowo wybierz impostorów spośród WSZYSTKICH graczy (w tym hosta)
       const shuffled = [...allPlayers].sort(() => 0.5 - Math.random());
       const impostorCount = Math.min(this.numImpostors, allPlayers.length);
       
       for (let i = 0; i < impostorCount; i++) {
-        this.impostorIds.push(shuffled[i].id);
-        this.players.get(shuffled[i].id).isImpostor = true;
+        const impostorId = shuffled[i].id;
+        this.impostorIds.push(impostorId);
+        const player = this.players.get(impostorId);
+        if (player) {
+          player.isImpostor = true;
+        }
       }
+      
+      console.log(`Game ${this.code}: Assigned impostors: ${this.impostorIds.join(', ')}`);
     }
     
     // Reset stanu graczy
@@ -180,6 +194,7 @@ class Game {
     const allPlayers = Array.from(this.players.values());
     this.turnOrder = [...allPlayers].sort(() => 0.5 - Math.random()).map(p => p.id);
     this.currentTurnIndex = 0;
+    console.log(`Game ${this.code}: Turn order: ${this.turnOrder.join(', ')}`);
   }
 
   getCurrentTurnPlayerId() {
@@ -314,6 +329,19 @@ class Game {
     this.isDeciding = false;
     this.votes.clear();
     
+    // Ustaw timeout dla głosowania (30 sekund)
+    if (this.votingTimeout) {
+      clearTimeout(this.votingTimeout);
+    }
+    
+    this.votingTimeout = setTimeout(() => {
+      if (this.isVoting && this.isPlaying) {
+        console.log(`Game ${this.code}: Voting timeout - forcing vote calculation`);
+        const voteResults = this.calculateVoteResults();
+        this.handleVoteResults(voteResults);
+      }
+    }, 30000);
+    
     return this.getGameState();
   }
 
@@ -324,6 +352,12 @@ class Game {
       .every(p => this.votes.has(p.id));
     
     if (allVoted) {
+      // Wyczyść timeout jeśli wszyscy zagłosowali
+      if (this.votingTimeout) {
+        clearTimeout(this.votingTimeout);
+        this.votingTimeout = null;
+      }
+      
       return this.calculateVoteResults();
     }
     
@@ -352,8 +386,63 @@ class Game {
     
     return {
       votedOutIds,
-      voteCounts: Array.from(voteCounts.entries())
+      voteCounts: Array.from(voteCounts.entries()),
+      maxVotes
     };
+  }
+
+  handleVoteResults(voteResults) {
+    // Sprawdź czy ktoś został wyrzucony
+    const someoneVotedOut = voteResults.votedOutIds.length > 0 && voteResults.maxVotes > 0;
+    
+    if (someoneVotedOut) {
+      // Sprawdź czy wyrzucony jest impostorem
+      const votedOutId = voteResults.votedOutIds[0];
+      const wasImpostor = this.impostorIds.includes(votedOutId);
+      
+      if (wasImpostor) {
+        // Usuń impostora z gry
+        const player = this.players.get(votedOutId);
+        if (player) {
+          player.isImpostor = false;
+        }
+        this.impostorIds = this.impostorIds.filter(id => id !== votedOutId);
+        
+        // Jeśli nie ma już impostorów, gracze wygrywają
+        if (this.impostorIds.length === 0) {
+          this.isPlaying = false;
+          this.gameEnded = true;
+          return {
+            type: 'impostorVotedOut',
+            votedOutId,
+            wasImpostor: true,
+            impostorsRemaining: 0,
+            gameEnded: true
+          };
+        }
+        
+        return {
+          type: 'impostorVotedOut',
+          votedOutId,
+          wasImpostor: true,
+          impostorsRemaining: this.impostorIds.length
+        };
+      } else {
+        // Wyrzucono zwykłego gracza
+        return {
+          type: 'innocentVotedOut',
+          votedOutId,
+          wasImpostor: false,
+          impostorsRemaining: this.impostorIds.length
+        };
+      }
+    } else {
+      // Nikt nie został wyrzucony (remis lub nikt nie zagłosował)
+      return {
+        type: 'noOneVotedOut',
+        impostorsRemaining: this.impostorIds.length
+      };
+    }
   }
 
   nextRound(keepSameWord = true) {
@@ -387,6 +476,12 @@ class Game {
       this.currentWordPair = this.getRandomWordPair();
       this.word = this.currentWordPair.word;
       this.hint = this.currentWordPair.hint;
+    }
+    
+    // Wyczyść timeout jeśli istnieje
+    if (this.votingTimeout) {
+      clearTimeout(this.votingTimeout);
+      this.votingTimeout = null;
     }
     
     return this.getGameState();
@@ -625,34 +720,36 @@ io.on('connection', (socket) => {
     
     const result = game.submitGuess(socket.id, guess);
     
-    if (result.correct) {
-      io.to(gameCode).emit('wordGuessed', {
-        guesserId: result.guesserId,
-        guesserName: result.guesserName,
-        word: game.word,
-        gameState: game.getGameState()
-      });
-      
-      setTimeout(() => {
-        io.to(gameCode).emit('gameEnded', {
-          reason: 'wordGuessed',
+    if (result) {
+      if (result.correct) {
+        io.to(gameCode).emit('wordGuessed', {
+          guesserId: result.guesserId,
+          guesserName: result.guesserName,
+          word: game.word,
           gameState: game.getGameState()
         });
-      }, 3000);
-    } else {
-      io.to(gameCode).emit('guessFailed', {
-        guesserId: result.guesserId,
-        guesserName: result.guesserName,
-        word: game.word,
-        gameState: game.getGameState()
-      });
-      
-      setTimeout(() => {
-        io.to(gameCode).emit('gameEnded', {
-          reason: 'guessFailed',
+        
+        setTimeout(() => {
+          io.to(gameCode).emit('gameEnded', {
+            reason: 'wordGuessed',
+            gameState: game.getGameState()
+          });
+        }, 3000);
+      } else {
+        io.to(gameCode).emit('guessFailed', {
+          guesserId: result.guesserId,
+          guesserName: result.guesserName,
+          word: game.word,
           gameState: game.getGameState()
         });
-      }, 3000);
+        
+        setTimeout(() => {
+          io.to(gameCode).emit('gameEnded', {
+            reason: 'guessFailed',
+            gameState: game.getGameState()
+          });
+        }, 3000);
+      }
     }
   });
   
@@ -709,10 +806,23 @@ io.on('connection', (socket) => {
     
     if (voteResults) {
       setTimeout(() => {
+        const voteOutcome = game.handleVoteResults(voteResults);
+        
         io.to(gameCode).emit('voteResults', {
           results: voteResults,
+          outcome: voteOutcome,
           gameState: game.getGameState()
         });
+        
+        // Jeśli gra się skończyła (wszyscy impostorzy wyeliminowani)
+        if (voteOutcome.gameEnded) {
+          setTimeout(() => {
+            io.to(gameCode).emit('gameEnded', {
+              reason: 'allImpostorsFound',
+              gameState: game.getGameState()
+            });
+          }, 3000);
+        }
       }, 1000);
     }
   });
@@ -725,7 +835,8 @@ io.on('connection', (socket) => {
     
     if (socket.id !== game.hostId) return;
     
-    if (!game.isPlaying || game.currentRound >= game.rounds || game.wordGuessed || game.guessFailed) {
+    // Sprawdź czy gra się skończyła
+    if (game.gameEnded || game.currentRound >= game.rounds) {
       io.to(gameCode).emit('gameEnded', {
         gameState: game.getGameState()
       });
@@ -734,6 +845,15 @@ io.on('connection', (socket) => {
         games.delete(gameCode);
       }, 60000);
       
+      return;
+    }
+    
+    // Sprawdź czy są jeszcze impostorzy
+    if (game.impostorIds.length === 0) {
+      io.to(gameCode).emit('gameEnded', {
+        reason: 'allImpostorsFound',
+        gameState: game.getGameState()
+      });
       return;
     }
     
@@ -812,3 +932,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
 });
+[file content end]
