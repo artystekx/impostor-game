@@ -444,11 +444,19 @@ class Game {
   }
 
   nextRound(keepSameWord = false) {
+    // Sprawdź czy to już ostatnia runda
+    if (this.currentRound >= this.rounds) {
+      this.isPlaying = false;
+      this.gameEnded = true;
+      return this.getGameState();
+    }
+    
     this.currentRound++;
     this.isVoting = false;
     this.isDeciding = false;
     this.wordGuessed = false;
     this.guessFailed = false;
+    this.isPlaying = true; // WAŻNE: Ustawiamy z powrotem na true!
     
     for (const player of this.players.values()) {
       player.hasSubmitted = false;
@@ -695,9 +703,6 @@ io.on('connection', (socket) => {
         return;
       }
     }
-    
-    // USUNIĘTE: Blokowanie impostorom wysyłania skojarzeń po pierwszej rundzie
-    // Teraz impostorzy mogą wysyłać skojarzenia w każdej rundzie
     
     const allSubmitted = game.submitAssociation(socket.id, association);
     
