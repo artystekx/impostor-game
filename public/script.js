@@ -12,8 +12,10 @@ let numImpostors = 1;
 let gameMode = 'simultaneous';
 let timerInterval = null;
 let turnTimerInterval = null;
+let votingTimerInterval = null;
 let timeLeft = 45;
 let turnTimeLeft = 30;
+let votingTimeLeft = 30;
 let gameState = null;
 let customWordData = null;
 let selectedWordForGame = null;
@@ -211,6 +213,7 @@ function initSocket() {
         
         if (timerInterval) clearInterval(timerInterval);
         if (turnTimerInterval) clearInterval(turnTimerInterval);
+        if (votingTimerInterval) clearInterval(votingTimerInterval);
         
         setTimeout(() => {
             if (data.reason === 'wordGuessed' || data.reason === 'guessFailed' || data.reason === 'allImpostorsFound') {
@@ -319,7 +322,7 @@ function updateGamePlayersList() {
     playersCount.textContent = gameState.players.length;
     
     gameState.players.forEach(player => {
-        // KOREKTA: NIE pokazuj impostora na czerwono innym graczom, tylko gdy gra się zakończyła lub to ja
+        // NIE pokazuj impostora na czerwono innym graczom (tylko jeśli gra się zakończyła)
         const showImpostor = player.isImpostor && 
             (gameState.wordGuessed || gameState.guessFailed || gameState.gameEnded || gameState.isVoting || player.id === socket.id);
         
@@ -329,14 +332,17 @@ function updateGamePlayersList() {
         let status = '';
         if (gameState.isPlaying && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed && !gameState.guessFailed) {
             if (gameState.gameMode === 'sequential') {
-                status = player.turnCompleted ? 'ready' : 'waiting';
+                // W trybie sequential pokazuj status tylko dla obecnego gracza
+                if (gameState.currentTurnPlayerId === player.id) {
+                    status = player.hasSubmitted ? 'ready' : 'waiting';
+                }
             } else {
                 status = player.hasSubmitted ? 'ready' : 'waiting';
             }
         } else if (gameState.isVoting) {
-            status = gameState.votes.some(v => v[0] === player.id) ? 'ready' : 'waiting';
+            status = player.voteSubmitted ? 'ready' : 'waiting';
         } else if (gameState.isDeciding) {
-            status = gameState.decisions.some(d => d[0] === player.id) ? 'ready' : 'waiting';
+            status = player.hasDecided ? 'ready' : 'waiting';
         }
         
         playerCard.innerHTML = `
@@ -379,13 +385,15 @@ function updateGameInterface() {
     document.getElementById('impostor-count').textContent = gameState.numImpostors;
     document.getElementById('game-mode-badge').textContent = gameState.gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy';
     
-    if (gameState.gameMode === 'sequential') {
-        timeLeft = 30;
-    } else {
-        timeLeft = roundTime;
-    }
-    
-    document.getElementById('timer').textContent = timeLeft;
+    // Resetujemy wszystkie sekcje przed pokazaniem właściwej
+    document.getElementById('association-section').style.display = 'none';
+    document.getElementById('waiting-section').style.display = 'none';
+    document.getElementById('voting-section').style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('decision-section').style.display = 'none';
+    document.getElementById('turn-section').style.display = 'none';
+    document.getElementById('word-guessed-section').style.display = 'none';
+    document.getElementById('host-controls').style.display = 'none';
     
     const wordDisplay = document.getElementById('word-display');
     const roleHint = document.getElementById('role-hint');
@@ -419,15 +427,6 @@ function updateGameInterface() {
     // Aktualizuj wskaźnik rundy w chacie
     document.getElementById('chat-round-indicator').textContent = `Runda: ${gameState.currentRound}`;
     
-    // Resetujemy wszystkie sekcje przed pokazaniem właściwej
-    document.getElementById('association-section').style.display = 'none';
-    document.getElementById('waiting-section').style.display = 'none';
-    document.getElementById('voting-section').style.display = 'none';
-    document.getElementById('results-section').style.display = 'none';
-    document.getElementById('decision-section').style.display = 'none';
-    document.getElementById('turn-section').style.display = 'none';
-    document.getElementById('word-guessed-section').style.display = 'none';
-    
     // Teraz pokazujemy właściwą sekcję w zależności od stanu gry
     if (gameState.wordGuessed || gameState.guessFailed) {
         document.getElementById('word-guessed-section').style.display = 'block';
@@ -446,7 +445,6 @@ function updateGameInterface() {
             turnSection.style.display = 'block';
             
             const currentPlayer = gameState.players.find(p => p.id === currentTurnPlayerId);
-            // KOREKTA: NIE pokazuj klasy impostor dla aktualnego gracza w sekcji tury
             document.getElementById('current-turn-player').innerHTML = `
                 <div class="player-card" style="display: inline-block; padding: 10px 20px;">
                     <div class="player-name">${currentPlayer.name}</div>
@@ -517,8 +515,6 @@ function updateGameInterface() {
     
     if (isHost && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed && !gameState.isVoting && !gameState.isDeciding) {
         document.getElementById('host-controls').style.display = 'flex';
-    } else {
-        document.getElementById('host-controls').style.display = 'none';
     }
     
     updateProgress();
@@ -567,6 +563,22 @@ function startTurnTimer() {
     }, 1000);
 }
 
+function startVotingTimer() {
+    if (votingTimerInterval) clearInterval(votingTimerInterval);
+    
+    votingTimeLeft = 30;
+    document.getElementById('timer').textContent = votingTimeLeft;
+    
+    votingTimerInterval = setInterval(() => {
+        votingTimeLeft--;
+        document.getElementById('timer').textContent = votingTimeLeft;
+        
+        if (votingTimeLeft <= 0) {
+            clearInterval(votingTimerInterval);
+        }
+    }, 1000);
+}
+
 function showNextTurn(nextPlayerId) {
     if (nextPlayerId === socket.id) {
         showNotification('Twoja kolej!', 'info');
@@ -582,8 +594,10 @@ function updateProgress() {
     
     if (gameState.isDeciding) {
         submittedPlayers = gameState.players.filter(p => p.hasDecided).length;
+    } else if (gameState.isVoting) {
+        submittedPlayers = gameState.players.filter(p => p.voteSubmitted).length;
     } else if (gameState.gameMode === 'sequential') {
-        submittedPlayers = gameState.players.filter(p => p.turnCompleted).length;
+        submittedPlayers = gameState.players.filter(p => p.hasSubmitted).length;
     } else {
         submittedPlayers = gameState.players.filter(p => p.hasSubmitted).length;
     }
@@ -594,8 +608,10 @@ function updateProgress() {
     if (progressText && progressFill) {
         if (gameState.isDeciding) {
             progressText.textContent = `${submittedPlayers}/${totalPlayers} podjęło decyzję`;
+        } else if (gameState.isVoting) {
+            progressText.textContent = `${submittedPlayers}/${totalPlayers} oddało głos`;
         } else if (gameState.gameMode === 'sequential') {
-            progressText.textContent = `${submittedPlayers}/${totalPlayers} graczy skończyło turę`;
+            progressText.textContent = `${submittedPlayers}/${totalPlayers} wysłało skojarzenie`;
         } else {
             progressText.textContent = `${submittedPlayers}/${totalPlayers} graczy gotowych`;
         }
@@ -659,6 +675,9 @@ function startVoting() {
     loadVoteOptions();
     
     document.getElementById('voted-message').style.display = 'none';
+    
+    // Uruchom timer głosowania
+    startVotingTimer();
 }
 
 function loadAssociationsForVoting() {
@@ -864,6 +883,7 @@ function showGuessFailed(data) {
 function startNextRound() {
     if (timerInterval) clearInterval(timerInterval);
     if (turnTimerInterval) clearInterval(turnTimerInterval);
+    if (votingTimerInterval) clearInterval(votingTimerInterval);
     
     // Resetujemy stan inputów dla nowej rundy
     document.getElementById('association-input').value = '';
