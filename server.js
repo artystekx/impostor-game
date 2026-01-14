@@ -231,6 +231,12 @@ class Game {
     const player = this.players.get(playerId);
     if (!player) return false;
     
+    // Sprawdź czy impostor może wysłać skojarzenie w tej rundzie
+    if (player.isImpostor && this.currentRound > 1) {
+      // Impostor w drugiej i kolejnych rundach nie może wysyłać skojarzeń
+      return false;
+    }
+    
     player.association = association;
     player.hasSubmitted = true;
     this.associations.set(playerId, association);
@@ -241,8 +247,15 @@ class Game {
       
       return allCompleted;
     } else {
-      const allSubmitted = Array.from(this.players.values())
-        .every(p => p.hasSubmitted);
+      // W trybie simultaneous, impostorzy nie wysyłają skojarzeń po pierwszej rundzie
+      const playersWhoCanSubmit = Array.from(this.players.values()).filter(p => {
+        if (p.isImpostor && this.currentRound > 1) {
+          return false;
+        }
+        return true;
+      });
+      
+      const allSubmitted = playersWhoCanSubmit.every(p => p.hasSubmitted);
       
       return allSubmitted;
     }
@@ -686,6 +699,13 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Nie twoja kolej!' });
         return;
       }
+    }
+    
+    const player = game.players.get(socket.id);
+    // Sprawdź czy impostor próbuje wysłać skojarzenie w drugiej lub kolejnej rundzie
+    if (player && player.isImpostor && game.currentRound > 1) {
+      socket.emit('error', { message: 'Jesteś impostorem! W tej rundzie możesz tylko zgadywać hasło.' });
+      return;
     }
     
     const allSubmitted = game.submitAssociation(socket.id, association);
