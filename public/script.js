@@ -1,5 +1,3 @@
-[file name]: script.js
-[file content begin]
 // Zmienne globalne
 let socket;
 let gameCode = '';
@@ -1108,4 +1106,3 @@ document.addEventListener('DOMContentLoaded', () => {
         this.value = this.value.toUpperCase();
     });
 });
-[file content end]
