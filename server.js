@@ -81,6 +81,7 @@ class Game {
     this.turnOrder = [];
     this.turnTimer = null;
     this.votingTimeout = null;
+    this.chatMessages = [];
     this.customWordData = customWordData;
     
     if (customWordData && customWordData.word && customWordData.hint) {
@@ -139,6 +140,7 @@ class Game {
     this.wordGuessed = false;
     this.guessFailed = false;
     this.gameEnded = false;
+    this.chatMessages = [];
     
     // Wybierz impostorów - host też może być impostorem!
     this.impostorIds = [];
@@ -229,6 +231,12 @@ class Game {
     const player = this.players.get(playerId);
     if (!player) return false;
     
+    // Sprawdź czy impostor może wysłać skojarzenie w tej rundzie
+    if (player.isImpostor && this.currentRound > 1) {
+      // Impostor w drugiej i kolejnych rundach nie może wysyłać skojarzeń
+      return false;
+    }
+    
     player.association = association;
     player.hasSubmitted = true;
     this.associations.set(playerId, association);
@@ -239,8 +247,15 @@ class Game {
       
       return allCompleted;
     } else {
-      const allSubmitted = Array.from(this.players.values())
-        .every(p => p.hasSubmitted);
+      // W trybie simultaneous, impostorzy nie wysyłają skojarzeń po pierwszej rundzie
+      const playersWhoCanSubmit = Array.from(this.players.values()).filter(p => {
+        if (p.isImpostor && this.currentRound > 1) {
+          return false;
+        }
+        return true;
+      });
+      
+      const allSubmitted = playersWhoCanSubmit.every(p => p.hasSubmitted);
       
       return allSubmitted;
     }
@@ -474,6 +489,29 @@ class Game {
     return this.getGameState();
   }
 
+  addChatMessage(playerId, message) {
+    const player = this.players.get(playerId);
+    if (!player) return null;
+    
+    const chatMessage = {
+      id: Date.now(),
+      playerId: playerId,
+      playerName: player.name,
+      message: message,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      round: this.currentRound
+    };
+    
+    this.chatMessages.push(chatMessage);
+    
+    // Ogranicz historię czatu do ostatnich 50 wiadomości
+    if (this.chatMessages.length > 50) {
+      this.chatMessages = this.chatMessages.slice(-50);
+    }
+    
+    return chatMessage;
+  }
+
   getGameState(playerId = null) {
     const associationsWithNames = Array.from(this.associations.entries()).map(([id, association]) => {
       const player = this.players.get(id);
@@ -520,15 +558,16 @@ class Game {
       guesses: Array.from(this.guesses.entries()),
       impostorIds: this.impostorIds,
       currentTurnPlayerId: this.gameMode === 'sequential' ? this.getCurrentTurnPlayerId() : null,
-      turnOrder: this.gameMode === 'sequential' ? this.turnOrder : []
+      turnOrder: this.gameMode === 'sequential' ? this.turnOrder : [],
+      chatMessages: this.chatMessages
     };
     
     if (playerId) {
       const player = this.players.get(playerId);
       if (player) {
-        // KLUCZOWA POPRAWKA: impostor zawsze widzi podpowiedź, nie hasło!
+        // KLUCZOWA POPRAWKA: impostor widzi podpowiedź, nie hasło
         if (player.isImpostor && this.isPlaying && !this.wordGuessed && !this.guessFailed) {
-          state.playerWord = this.hint; // Impostor widzi podpowiedź
+          state.playerWord = this.hint; // TYLKO podpowiedź dla impostora
           state.isImpostor = true;
           
           state.coImpostors = this.impostorIds
@@ -660,6 +699,13 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Nie twoja kolej!' });
         return;
       }
+    }
+    
+    const player = game.players.get(socket.id);
+    // Sprawdź czy impostor próbuje wysłać skojarzenie w drugiej lub kolejnej rundzie
+    if (player && player.isImpostor && game.currentRound > 1) {
+      socket.emit('error', { message: 'Jesteś impostorem! W tej rundzie możesz tylko zgadywać hasło.' });
+      return;
     }
     
     const allSubmitted = game.submitAssociation(socket.id, association);
@@ -853,35 +899,32 @@ io.on('connection', (socket) => {
     
     if (socket.id !== game.hostId) return;
     
-    game.currentRound = 0;
-    game.isPlaying = false;
-    game.isVoting = false;
-    game.isDeciding = false;
-    game.wordGuessed = false;
-    game.guessFailed = false;
-    game.gameEnded = false;
+    // Usuń starą grę
+    games.delete(gameCode);
     
-    for (const player of game.players.values()) {
-      player.isImpostor = false;
-      player.hasSubmitted = false;
-      player.association = '';
-      player.hasDecided = false;
-      player.hasGuessed = false;
-      player.guess = '';
-      player.turnCompleted = false;
+    // Przeładuj stronę dla wszystkich graczy
+    io.to(gameCode).emit('forceReload');
+    
+    console.log(`Gra zrestartowana: ${gameCode}`);
+  });
+  
+  socket.on('sendChatMessage', (data) => {
+    const { message } = data;
+    const gameCode = socket.gameCode;
+    if (!gameCode || !games.has(gameCode)) return;
+    
+    const game = games.get(gameCode);
+    
+    if (!game.isPlaying) return;
+    
+    const chatMessage = game.addChatMessage(socket.id, message);
+    
+    if (chatMessage) {
+      io.to(gameCode).emit('newChatMessage', {
+        chatMessage,
+        gameState: game.getGameState()
+      });
     }
-    
-    game.impostorIds = [];
-    
-    // Zresetuj custom słowo
-    game.customWordData = null;
-    game.currentWordPair = game.getRandomWordPair();
-    game.word = game.currentWordPair.word;
-    game.hint = game.currentWordPair.hint;
-    
-    io.to(gameCode).emit('gameRestarted', {
-      gameState: game.getGameState()
-    });
   });
   
   socket.on('disconnect', () => {
