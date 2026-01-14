@@ -8,6 +8,7 @@ let isImpostor = false;
 let currentRound = 0;
 let totalRounds = 0;
 let roundTime = 45;
+let votingTime = 30;
 let numImpostors = 1;
 let gameMode = 'simultaneous';
 let timerInterval = null;
@@ -19,6 +20,7 @@ let votingTimeLeft = 30;
 let gameState = null;
 let customWordData = null;
 let selectedWordForGame = null;
+let autoSubmitEnabled = true;
 
 // Elementy DOM
 const screens = {
@@ -71,6 +73,22 @@ function updateConnectionStatus(connected) {
     } else {
         status.classList.add('disconnected');
         statusText.textContent = 'Rozłączono';
+    }
+}
+
+function updateTimerDisplay(time) {
+    const timerElement = document.getElementById('timer');
+    if (!timerElement) return;
+    
+    timerElement.textContent = time;
+    
+    // Aktualizuj klasy CSS w zależności od pozostałego czasu
+    timerElement.classList.remove('warning', 'danger');
+    
+    if (time <= 10) {
+        timerElement.classList.add('danger');
+    } else if (time <= 20) {
+        timerElement.classList.add('warning');
     }
 }
 
@@ -156,11 +174,41 @@ function initSocket() {
     socket.on('associationSubmitted', (data) => {
         gameState = data.gameState;
         
+        // Dodaj wiadomość do czatu dla trybu kolejka
+        if (gameState.gameMode === 'sequential' && data.playerId) {
+            const player = gameState.players.find(p => p.id === data.playerId);
+            if (player) {
+                addChatMessage({
+                    type: 'association',
+                    playerName: player.name,
+                    message: data.association || '(pominął)',
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    round: gameState.currentRound
+                });
+            }
+        }
+        
         if (isHost) {
             updateGamePlayersList();
         }
         
         updateProgress();
+    });
+    
+    socket.on('guessSubmitted', (data) => {
+        gameState = data.gameState;
+        
+        // Dodaj wiadomość do czatu
+        const player = gameState.players.find(p => p.id === data.playerId);
+        if (player) {
+            addChatMessage({
+                type: 'guess',
+                playerName: player.name,
+                message: `Zgadł: "${data.guess}"`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                round: gameState.currentRound
+            });
+        }
     });
     
     socket.on('nextTurn', (data) => {
@@ -196,11 +244,29 @@ function initSocket() {
     socket.on('wordGuessed', (data) => {
         gameState = data.gameState;
         showWordGuessed(data);
+        
+        // Dodaj wiadomość do czatu
+        addChatMessage({
+            type: 'system',
+            playerName: 'SYSTEM',
+            message: `🎉 ${data.guesserName} odgadł hasło "${data.word}"! Impostorzy wygrywają rundę!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            round: gameState.currentRound
+        });
     });
     
     socket.on('guessFailed', (data) => {
         gameState = data.gameState;
         showGuessFailed(data);
+        
+        // Dodaj wiadomość do czatu
+        addChatMessage({
+            type: 'system',
+            playerName: 'SYSTEM',
+            message: `❌ ${data.guesserName} nie odgadł hasła. Gracze wygrywają!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            round: gameState.currentRound
+        });
     });
     
     socket.on('voteResults', (data) => {
@@ -253,6 +319,15 @@ function initSocket() {
     socket.on('playerLeft', (data) => {
         gameState = data.gameState;
         
+        // Dodaj wiadomość do czatu
+        addChatMessage({
+            type: 'system',
+            playerName: 'SYSTEM',
+            message: `👋 Gracz opuścił grę`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            round: gameState.currentRound
+        });
+        
         if (isHost) {
             updatePlayersList();
         } else {
@@ -265,6 +340,16 @@ function initSocket() {
         setTimeout(() => {
             switchScreen('start');
         }, 3000);
+    });
+    
+    socket.on('systemMessage', (data) => {
+        addChatMessage({
+            type: 'system',
+            playerName: 'SYSTEM',
+            message: data.message,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            round: gameState ? gameState.currentRound : 1
+        });
     });
 }
 
@@ -363,6 +448,7 @@ function startGame() {
     currentRound = gameState.currentRound;
     totalRounds = gameState.rounds;
     roundTime = gameState.roundTime;
+    votingTime = 30; // Stały czas na głosowanie
     numImpostors = gameState.numImpostors;
     gameMode = gameState.gameMode;
     
@@ -377,6 +463,15 @@ function startGame() {
     updateGamePlayersList();
     updateSidebarInfo();
     loadChatMessages();
+    
+    // Dodaj wiadomość powitalną do czatu
+    addChatMessage({
+        type: 'system',
+        playerName: 'SYSTEM',
+        message: `🎮 Rozpoczęto grę! Runda ${currentRound}. Impostorów: ${numImpostors}. Tryb: ${gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy'}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        round: currentRound
+    });
 }
 
 function updateGameInterface() {
@@ -402,7 +497,7 @@ function updateGameInterface() {
     if (isImpostor && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed) {
         wordDisplay.textContent = gameState.hint; // TYLKO podpowiedź dla impostora
         roleHint.innerHTML = '<i class="fas fa-user-secret"></i> Jesteś IMPOSTOREM! Nie znasz hasła, widzisz tylko podpowiedź. Spróbuj zgadnąć hasło!';
-        roleHint.style.color = '#fb8f8f';
+        roleHint.style.color = '#ff3366';
         
         // Pokaż listę współimpostorów, jeśli istnieją
         if (gameState.coImpostors && gameState.coImpostors.length > 0) {
@@ -420,7 +515,7 @@ function updateGameInterface() {
         } else {
             roleHint.innerHTML = '<i class="fas fa-user-check"></i> Jesteś GRACZEM. Znajdź impostora po jego skojarzeniach!';
         }
-        roleHint.style.color = '#8f94fb';
+        roleHint.style.color = '#00ffcc';
         document.getElementById('guess-section').style.display = 'none';
     }
     
@@ -446,7 +541,7 @@ function updateGameInterface() {
             
             const currentPlayer = gameState.players.find(p => p.id === currentTurnPlayerId);
             document.getElementById('current-turn-player').innerHTML = `
-                <div class="player-card" style="display: inline-block; padding: 10px 20px;">
+                <div class="player-card" style="display: inline-block; padding: 15px 30px;">
                     <div class="player-name">${currentPlayer.name}</div>
                 </div>
             `;
@@ -524,19 +619,20 @@ function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
     
     timeLeft = roundTime;
-    document.getElementById('timer').textContent = timeLeft;
+    updateTimerDisplay(timeLeft);
     
     timerInterval = setInterval(() => {
         timeLeft--;
-        document.getElementById('timer').textContent = timeLeft;
+        updateTimerDisplay(timeLeft);
         
-        if (timeLeft <= 0) {
+        if (timeLeft <= 0 && autoSubmitEnabled) {
             clearInterval(timerInterval);
             // Automatycznie przejdź do następnego etapu
             if (gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed) {
-                // W trybie simultaneous - przejdź do decyzji
-                if (gameState.gameMode === 'simultaneous') {
+                const player = gameState.players.find(p => p.id === socket.id);
+                if (player && !player.hasSubmitted) {
                     socket.emit('submitAssociation', { association: '' });
+                    showNotification('Czas minął! Automatycznie wysłano puste skojarzenie.', 'warning');
                 }
             }
         }
@@ -553,11 +649,15 @@ function startTurnTimer() {
         turnTimeLeft--;
         document.getElementById('turn-timer').textContent = turnTimeLeft;
         
-        if (turnTimeLeft <= 0) {
+        if (turnTimeLeft <= 0 && autoSubmitEnabled) {
             clearInterval(turnTimerInterval);
             // Automatycznie przejdź do następnego gracza
             if (gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed && gameState.gameMode === 'sequential') {
-                socket.emit('submitAssociation', { association: '' });
+                const player = gameState.players.find(p => p.id === socket.id);
+                if (player && !player.hasSubmitted) {
+                    socket.emit('submitAssociation', { association: '' });
+                    showNotification('Czas minął! Automatycznie wysłano puste skojarzenie.', 'warning');
+                }
             }
         }
     }, 1000);
@@ -566,15 +666,16 @@ function startTurnTimer() {
 function startVotingTimer() {
     if (votingTimerInterval) clearInterval(votingTimerInterval);
     
-    votingTimeLeft = 30;
-    document.getElementById('timer').textContent = votingTimeLeft;
+    votingTimeLeft = votingTime;
+    updateTimerDisplay(votingTimeLeft);
     
     votingTimerInterval = setInterval(() => {
         votingTimeLeft--;
-        document.getElementById('timer').textContent = votingTimeLeft;
+        updateTimerDisplay(votingTimeLeft);
         
-        if (votingTimeLeft <= 0) {
+        if (votingTimeLeft <= 0 && autoSubmitEnabled) {
             clearInterval(votingTimerInterval);
+            showNotification('Czas na głosowanie minął!', 'warning');
         }
     }, 1000);
 }
@@ -642,11 +743,11 @@ function displayAssociationsWithNames() {
     gameState.associations.forEach((assoc, index) => {
         const associationCard = document.createElement('div');
         associationCard.className = 'association-card';
-        associationCard.style.border = '2px solid #4e54c8';
-        associationCard.style.background = 'rgba(78, 84, 200, 0.1)';
-        associationCard.style.minWidth = '200px';
-        associationCard.style.padding = '15px';
-        associationCard.style.borderRadius = '10px';
+        associationCard.style.border = '3px solid #00ccff';
+        associationCard.style.background = 'linear-gradient(145deg, rgba(0, 204, 255, 0.1) 0%, rgba(45, 27, 105, 0.8) 100%)';
+        associationCard.style.minWidth = '220px';
+        associationCard.style.padding = '20px';
+        associationCard.style.borderRadius = '15px';
         
         const hasAssociation = assoc.association && assoc.association.trim() !== '';
         const associationText = hasAssociation ? assoc.association : '(brak skojarzenia)';
@@ -654,13 +755,13 @@ function displayAssociationsWithNames() {
         const textStyle = hasAssociation ? 'normal' : 'italic';
         
         associationCard.innerHTML = `
-            <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.3); color: #fff; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+            <div style="position: absolute; top: 10px; left: 10px; background: linear-gradient(90deg, #00ccff, #8a2be2); color: #fff; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; box-shadow: 0 5px 15px rgba(0, 204, 255, 0.4);">
                 ${index + 1}
             </div>
-            <div style="font-weight: bold; color: #8f94fb; margin-bottom: 10px; text-align: center;">
+            <div style="font-weight: bold; color: #00ffcc; margin-bottom: 15px; text-align: center; font-size: 1.1rem;">
                 <i class="fas fa-user"></i> ${assoc.playerName}
             </div>
-            <div style="font-size: 1.3rem; font-weight: bold; text-align: center; color: ${textColor}; font-style: ${textStyle};">${associationText}</div>
+            <div style="font-size: 1.5rem; font-weight: bold; text-align: center; color: ${textColor}; font-style: ${textStyle}; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px;">${associationText}</div>
         `;
         
         container.appendChild(associationCard);
@@ -691,8 +792,8 @@ function loadAssociationsForVoting() {
     gameState.associations.forEach((assoc, index) => {
         const associationCard = document.createElement('div');
         associationCard.className = 'association-card';
-        associationCard.style.border = '2px solid #4e54c8';
-        associationCard.style.background = 'rgba(78, 84, 200, 0.1)';
+        associationCard.style.border = '3px solid #00ccff';
+        associationCard.style.background = 'linear-gradient(145deg, rgba(0, 204, 255, 0.1) 0%, rgba(45, 27, 105, 0.8) 100%)';
         
         const hasAssociation = assoc.association && assoc.association.trim() !== '';
         const associationText = hasAssociation ? assoc.association : '(brak skojarzenia)';
@@ -701,10 +802,10 @@ function loadAssociationsForVoting() {
         
         associationCard.innerHTML = `
             <div class="association-number">${index + 1}</div>
-            <div class="player-name" style="color: #8f94fb; margin-bottom: 10px;">
+            <div class="player-name" style="color: #00ffcc; margin-bottom: 15px; font-size: 1.2rem;">
                 <i class="fas fa-user"></i> ${assoc.playerName}
             </div>
-            <div class="association-text" style="color: ${textColor}; font-style: ${textStyle};">${associationText}</div>
+            <div class="association-text" style="color: ${textColor}; font-style: ${textStyle}; font-size: 1.3rem;">${associationText}</div>
         `;
         
         associationsList.appendChild(associationCard);
@@ -736,18 +837,23 @@ function loadVoteOptions() {
                 submitVoteBtn.id = 'submit-vote-btn';
                 submitVoteBtn.className = 'btn btn-primary';
                 submitVoteBtn.innerHTML = '<i class="fas fa-vote-yea"></i> Zagłosuj';
-                submitVoteBtn.style.marginTop = '20px';
+                submitVoteBtn.style.marginTop = '25px';
                 submitVoteBtn.style.width = '100%';
+                submitVoteBtn.style.padding = '18px';
+                submitVoteBtn.style.fontSize = '1.3rem';
                 
                 submitVoteBtn.addEventListener('click', () => {
                     const selectedVoteBtn = document.querySelector('.vote-btn.selected');
-                    if (!selectedVoteBtn) return;
+                    if (!selectedVoteBtn) {
+                        showNotification('Wybierz gracza, na którego chcesz zagłosować!', 'error');
+                        return;
+                    }
                     
                     const votedPlayerId = selectedVoteBtn.dataset.playerId;
                     socket.emit('submitVote', { votedPlayerId });
                     
                     submitVoteBtn.disabled = true;
-                    submitVoteBtn.textContent = 'Głos oddany';
+                    submitVoteBtn.textContent = 'Głos oddany ✓';
                     document.getElementById('voted-message').style.display = 'flex';
                 });
                 
@@ -774,18 +880,18 @@ function showVoteResults(results, outcome) {
         resultsHTML = `
             <div class="results-card win">
                 <h2 class="results-title"><i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!</h2>
-                <p class="results-message">Wykryto impostora: <strong>${votedOutPlayer.name}</strong></p>
+                <p class="results-message">Wykryto impostora: <strong style="color: #00ff99;">${votedOutPlayer.name}</strong></p>
                 
                 <div class="impostor-reveal">
                     <h4>PRAWDZIWI IMPOSTORZY:</h4>
                     ${gameState.impostorIds.map(impostorId => {
                         const impostor = gameState.players.find(p => p.id === impostorId);
-                        return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
+                        return impostor ? `<p style="font-size: 1.8rem; font-weight: bold; color: #ff3366; margin: 10px 0;">
                             ${impostor.name} ${impostorId === outcome.votedOutId ? '✅ (wykryty)' : ''}
                         </p>` : '';
                     }).join('')}
-                    <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
-                    <p>Impostorzy widzieli podpowiedź: <strong>${gameState.hint}</strong></p>
+                    <p style="font-size: 1.2rem; margin-top: 20px;">Hasło w tej rundzie było: <strong style="color: #00ccff;">${gameState.word}</strong></p>
+                    <p style="font-size: 1.2rem;">Impostorzy widzieli podpowiedź: <strong style="color: #ffcc00;">${gameState.hint}</strong></p>
                 </div>
             </div>
         `;
@@ -795,17 +901,17 @@ function showVoteResults(results, outcome) {
         resultsHTML = `
             <div class="results-card lose">
                 <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
-                <p class="results-message">Niewinny gracz został wybrany: <strong>${votedOutPlayer.name}</strong></p>
+                <p class="results-message">Niewinny gracz został wybrany: <strong style="color: #ff3366;">${votedOutPlayer.name}</strong></p>
                 
                 <div class="impostor-reveal">
                     <h4>PRAWDZIWI IMPOSTORZY:</h4>
                     ${gameState.impostorIds.map(impostorId => {
                         const impostor = gameState.players.find(p => p.id === impostorId);
-                        return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
+                        return impostor ? `<p style="font-size: 1.8rem; font-weight: bold; color: #ff3366; margin: 10px 0;">
                             ${impostor.name}
                         </p>` : '';
                     }).join('')}
-                    <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
+                    <p style="font-size: 1.2rem; margin-top: 20px;">Hasło w tej rundzie było: <strong style="color: #00ccff;">${gameState.word}</strong></p>
                 </div>
             </div>
         `;
@@ -819,11 +925,11 @@ function showVoteResults(results, outcome) {
                     <h4>PRAWDZIWI IMPOSTORZY:</h4>
                     ${gameState.impostorIds.map(impostorId => {
                         const impostor = gameState.players.find(p => p.id === impostorId);
-                        return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
+                        return impostor ? `<p style="font-size: 1.8rem; font-weight: bold; color: #ff3366; margin: 10px 0;">
                             ${impostor.name}
                         </p>` : '';
                     }).join('')}
-                    <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
+                    <p style="font-size: 1.2rem; margin-top: 20px;">Hasło w tej rundzie było: <strong style="color: #00ccff;">${gameState.word}</strong></p>
                 </div>
             </div>
         `;
@@ -843,16 +949,16 @@ function showWordGuessed(data) {
     wordGuessedSection.style.display = 'block';
     
     wordGuessedContent.innerHTML = `
-        <p style="font-size: 1.5rem; color: #ffffff;">
-            Impostor <strong style="color: #fb8f8f;">${data.guesserName}</strong> odgadł hasło!
+        <p style="font-size: 1.8rem; color: #ffffff; margin-bottom: 20px;">
+            Impostor <strong style="color: #ff3366;">${data.guesserName}</strong> odgadł hasło!
         </p>
-        <p style="font-size: 1.8rem; font-weight: bold; color: #8ffb8f; margin: 20px 0;">
+        <p style="font-size: 2.5rem; font-weight: bold; color: #00ff99; margin: 30px 0; text-shadow: 0 0 20px rgba(0, 255, 153, 0.5);">
             Hasło: ${data.word}
         </p>
-        <p style="color: #fb8f8f; font-size: 1.2rem;">
+        <p style="color: #ff3366; font-size: 1.5rem; font-weight: bold;">
             Impostorzy wygrywają rundę!
         </p>
-        <p style="margin-top: 30px; color: #b0b0d0;">
+        <p style="margin-top: 40px; color: #e0e0ff; font-size: 1.1rem;">
             Gra zakończona.
         </p>
     `;
@@ -865,16 +971,16 @@ function showGuessFailed(data) {
     wordGuessedSection.style.display = 'block';
     
     wordGuessedContent.innerHTML = `
-        <p style="font-size: 1.5rem; color: #ffffff;">
-            Impostor <strong style="color: #fb8f8f;">${data.guesserName}</strong> nie odgadł hasła!
+        <p style="font-size: 1.8rem; color: #ffffff; margin-bottom: 20px;">
+            Impostor <strong style="color: #ff3366;">${data.guesserName}</strong> nie odgadł hasła!
         </p>
-        <p style="font-size: 1.8rem; font-weight: bold; color: #8ffb8f; margin: 20px 0;">
+        <p style="font-size: 2.5rem; font-weight: bold; color: #00ff99; margin: 30px 0; text-shadow: 0 0 20px rgba(0, 255, 153, 0.5);">
             Hasło: ${data.word}
         </p>
-        <p style="color: #8ffb8f; font-size: 1.2rem;">
+        <p style="color: #00ff99; font-size: 1.5rem; font-weight: bold;">
             Gracze wygrywają!
         </p>
-        <p style="margin-top: 30px; color: #b0b0d0;">
+        <p style="margin-top: 40px; color: #e0e0ff; font-size: 1.1rem;">
             Gra zakończona.
         </p>
     `;
@@ -896,6 +1002,15 @@ function startNextRound() {
     document.getElementById('submit-guess-btn').style.display = 'flex';
     
     updateGameInterface();
+    
+    // Dodaj wiadomość o nowej rundzie do czatu
+    addChatMessage({
+        type: 'system',
+        playerName: 'SYSTEM',
+        message: `🔄 Rozpoczyna się runda ${gameState.currentRound}!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        round: gameState.currentRound
+    });
 }
 
 function updateSidebarInfo() {
@@ -924,7 +1039,7 @@ function showFinalResults(reason) {
                 <h2 class="results-title">
                     <i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!
                 </h2>
-                <p style="font-size: 1.3rem; color: #fb8f8f; margin: 20px 0;">
+                <p style="font-size: 1.5rem; color: #ff3366; margin: 30px 0;">
                     Impostor odgadł hasło: <strong>${gameState.word}</strong>
                 </p>
         `;
@@ -934,7 +1049,7 @@ function showFinalResults(reason) {
                 <h2 class="results-title">
                     <i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!
                 </h2>
-                <p style="font-size: 1.3rem; color: #8ffb8f; margin: 20px 0;">
+                <p style="font-size: 1.5rem; color: #00ff99; margin: 30px 0;">
                     Impostor nie odgadł hasła: <strong>${gameState.word}</strong>
                 </p>
         `;
@@ -944,7 +1059,7 @@ function showFinalResults(reason) {
                 <h2 class="results-title">
                     <i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!
                 </h2>
-                <p style="font-size: 1.3rem; color: #8ffb8f; margin: 20px 0;">
+                <p style="font-size: 1.5rem; color: #00ff99; margin: 30px 0;">
                     Wszyscy impostorzy zostali wykryci!
                 </p>
         `;
@@ -958,17 +1073,21 @@ function showFinalResults(reason) {
     }
     
     resultsHTML += `
-        <div style="margin: 30px 0;">
-            <h3 style="color: #8f94fb; margin-bottom: 20px;">Role graczy:</h3>
-            <div style="background: rgba(15, 21, 48, 0.5); border-radius: 10px; padding: 20px;">
+        <div style="margin: 40px 0;">
+            <h3 style="color: #00ffcc; margin-bottom: 25px; font-size: 1.8rem;">Role graczy:</h3>
+            <div style="background: linear-gradient(145deg, rgba(26, 26, 46, 0.8) 0%, rgba(45, 27, 105, 0.8) 100%); border-radius: 15px; padding: 25px; border: 3px solid #8a2be2;">
                 ${sortedPlayers.map((player, index) => `
                     <div style="display: flex; justify-content: space-between; align-items: center; 
-                                padding: 15px; border-bottom: ${index < sortedPlayers.length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none'};
-                                background: ${player.isImpostor ? 'rgba(200, 78, 78, 0.2)' : 'rgba(78, 84, 200, 0.2)'}; border-radius: 8px; margin-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 15px;">
+                                padding: 20px; border-bottom: ${index < sortedPlayers.length - 1 ? '2px solid rgba(255,255,255,0.1)' : 'none'};
+                                background: ${player.isImpostor ? 'linear-gradient(145deg, rgba(255, 51, 102, 0.2) 0%, rgba(45, 27, 105, 0.8) 100%)' : 'linear-gradient(145deg, rgba(0, 204, 255, 0.2) 0%, rgba(45, 27, 105, 0.8) 100%)'}; 
+                                border-radius: 12px; margin-bottom: 15px; border-left: 5px solid ${player.isImpostor ? '#ff3366' : player.isHost ? '#00ff99' : '#00ccff'};">
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <div style="width: 50px; height: 50px; border-radius: 50%; background: ${player.isImpostor ? '#ff3366' : player.isHost ? '#00ff99' : '#00ccff'}; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                                ${player.isImpostor ? '👤' : player.isHost ? '👑' : '😊'}
+                            </div>
                             <div>
-                                <div style="font-weight: bold; font-size: 1.2rem;">${player.name}</div>
-                                <div style="font-size: 0.9rem; color: ${player.isImpostor ? '#fb8f8f' : '#8f94fb'}">
+                                <div style="font-weight: bold; font-size: 1.4rem;">${player.name}</div>
+                                <div style="font-size: 1rem; color: ${player.isImpostor ? '#ff3366' : player.isHost ? '#00ff99' : '#00ccff'}">
                                     ${player.isImpostor ? 'IMPOSTOR' : player.isHost ? 'HOST' : 'GRACZ'}
                                 </div>
                             </div>
@@ -978,18 +1097,18 @@ function showFinalResults(reason) {
             </div>
         </div>
         
-        <div style="margin-top: 30px; padding: 20px; background: rgba(15, 21, 48, 0.5); border-radius: 10px;">
-            <h4 style="color: #8f94fb; margin-bottom: 15px;">Podsumowanie:</h4>
-            <ul style="color: #b0b0d0; line-height: 1.8;">
-                <li>Ostatnie hasło: <strong>${gameState.word}</strong></li>
-                <li>Impostorzy widzieli: <strong>${gameState.hint}</strong></li>
-                <li>Rozegrane rundy: <strong>${gameState.currentRound}</strong></li>
-                <li>Impostorzy: <strong>${gameState.impostorIds.length}</strong></li>
+        <div style="margin-top: 40px; padding: 30px; background: linear-gradient(145deg, rgba(26, 26, 46, 0.8) 0%, rgba(45, 27, 105, 0.8) 100%); border-radius: 15px; border: 3px solid #00ccff;">
+            <h4 style="color: #00ffcc; margin-bottom: 20px; font-size: 1.5rem;">Podsumowanie:</h4>
+            <ul style="color: #e0e0ff; line-height: 2; font-size: 1.1rem;">
+                <li><i class="fas fa-key" style="color: #00ccff;"></i> Ostatnie hasło: <strong>${gameState.word}</strong></li>
+                <li><i class="fas fa-eye" style="color: #ff3366;"></i> Impostorzy widzieli: <strong>${gameState.hint}</strong></li>
+                <li><i class="fas fa-redo" style="color: #00ff99;"></i> Rozegrane rundy: <strong>${gameState.currentRound}</strong></li>
+                <li><i class="fas fa-user-secret" style="color: #ffcc00;"></i> Impostorzy: <strong>${gameState.impostorIds.length}</strong></li>
             </ul>
         </div>
         
-        <p style="margin-top: 30px; color: #b0b0d0; font-style: italic;">
-            Dziękujemy za grę!
+        <p style="margin-top: 40px; color: #00ffcc; font-style: italic; font-size: 1.2rem;">
+            Dziękujemy za grę! 🎮
         </p>
     </div>`;
     
@@ -1017,12 +1136,26 @@ function addChatMessage(chatMessage) {
     if (!chatMessagesContainer) return;
     
     const messageElement = document.createElement('div');
-    messageElement.className = 'chat-message';
+    messageElement.className = `chat-message ${chatMessage.type || 'chat'}`;
+    
+    let icon = 'fa-user';
+    let playerNameDisplay = chatMessage.playerName;
+    
+    if (chatMessage.type === 'system') {
+        icon = 'fa-bullhorn';
+        playerNameDisplay = `<span style="color: #ffcc00;">${chatMessage.playerName}</span>`;
+    } else if (chatMessage.type === 'association') {
+        icon = 'fa-comment';
+        playerNameDisplay = `<span style="color: #00ccff;">${chatMessage.playerName}</span>`;
+    } else if (chatMessage.type === 'guess') {
+        icon = 'fa-lightbulb';
+        playerNameDisplay = `<span style="color: #00ff99;">${chatMessage.playerName}</span>`;
+    }
     
     messageElement.innerHTML = `
         <div class="message-header">
             <div>
-                <span class="message-player">${chatMessage.playerName}</span>
+                <span class="message-player"><i class="fas ${icon}"></i> ${playerNameDisplay}</span>
                 <span class="message-round"> (Runda ${chatMessage.round})</span>
             </div>
             <div class="message-time">${chatMessage.timestamp}</div>
@@ -1076,8 +1209,8 @@ function loadWordsTable() {
     words.forEach(wordPair => {
         tableHTML += `
             <tr>
-                <td><strong>${wordPair.word}</strong></td>
-                <td>${wordPair.hint}</td>
+                <td><strong style="color: #00ffcc;">${wordPair.word}</strong></td>
+                <td style="color: #e0e0ff;">${wordPair.hint}</td>
                 <td>
                     <button class="word-select-btn" data-word="${wordPair.word}" data-hint="${wordPair.hint}">
                         Wybierz
@@ -1345,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('end-game-btn').addEventListener('click', () => {
         if (confirm('Czy na pewno chcesz zakończyć grę?')) {
-            socket.emit('nextRound', { keepSameWord: true });
+            socket.emit('endGame');
         }
     });
     
@@ -1424,5 +1557,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === this) {
             this.style.display = 'none';
         }
+    });
+    
+    // Automatyczne wysyłanie pustych odpowiedzi po czasie
+    document.getElementById('round-time').addEventListener('change', function() {
+        roundTime = parseInt(this.value);
     });
 });
