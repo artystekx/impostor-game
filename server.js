@@ -117,7 +117,8 @@ class Game {
       hasDecided: false,
       hasGuessed: false,
       guess: '',
-      turnCompleted: false
+      turnCompleted: false,
+      voteSubmitted: false
     });
     
     return this.players.get(playerId);
@@ -151,6 +152,13 @@ class Game {
     // Zresetuj role wszystkich graczy
     for (const player of allPlayers) {
       player.isImpostor = false;
+      player.hasSubmitted = false;
+      player.association = '';
+      player.hasDecided = false;
+      player.hasGuessed = false;
+      player.guess = '';
+      player.turnCompleted = false;
+      player.voteSubmitted = false;
     }
     
     // Losowo wybierz impostorów spośród WSZYSTKICH graczy (w tym hosta)
@@ -167,16 +175,6 @@ class Game {
     }
     
     console.log(`Game ${this.code}: Assigned impostors: ${this.impostorIds.join(', ')}`);
-    
-    // Reset stanu graczy
-    for (const player of this.players.values()) {
-      player.hasSubmitted = false;
-      player.association = '';
-      player.hasDecided = false;
-      player.hasGuessed = false;
-      player.guess = '';
-      player.turnCompleted = false;
-    }
     
     this.associations.clear();
     this.votes.clear();
@@ -248,10 +246,11 @@ class Game {
     this.associations.set(playerId, association);
     
     if (this.gameMode === 'sequential') {
-      const allCompleted = Array.from(this.players.values())
-        .every(p => p.turnCompleted || p.hasSubmitted);
+      // Sprawdź czy wszyscy gracze wysłali skojarzenia
+      const allPlayers = Array.from(this.players.values());
+      const allSubmitted = allPlayers.every(p => p.hasSubmitted);
       
-      return allCompleted;
+      return allSubmitted;
     } else {
       // W trybie simultaneous - WSZYSCY gracze (w tym impostorzy) mogą wysyłać skojarzenia w każdej rundzie
       const allPlayers = Array.from(this.players.values());
@@ -347,6 +346,11 @@ class Game {
     this.isDeciding = false;
     this.votes.clear();
     
+    // Resetuj stan głosowania dla wszystkich graczy
+    for (const player of this.players.values()) {
+      player.voteSubmitted = false;
+    }
+    
     if (this.votingTimeout) {
       clearTimeout(this.votingTimeout);
     }
@@ -367,6 +371,11 @@ class Game {
     if (!this.players.has(votedPlayerId)) {
       console.log(`Game ${this.code}: Invalid vote - player ${votedPlayerId} doesn't exist`);
       return null;
+    }
+    
+    const voter = this.players.get(voterId);
+    if (voter) {
+      voter.voteSubmitted = true;
     }
     
     this.votes.set(voterId, votedPlayerId);
@@ -493,14 +502,15 @@ class Game {
     this.guessFailed = false;
     this.isPlaying = true;
     
-    // Resetujemy tylko stan wysłania, nie resetujemy turnCompleted dla trybu sequential
+    // Resetujemy stan graczy
     for (const player of this.players.values()) {
       player.hasSubmitted = false;
       player.association = '';
       player.hasDecided = false;
       player.hasGuessed = false;
       player.guess = '';
-      // NIE resetujemy turnCompleted tutaj - to zostanie zresetowane w prepareTurnOrder()
+      player.turnCompleted = false;
+      player.voteSubmitted = false;
     }
     
     this.associations.clear();
@@ -519,10 +529,6 @@ class Game {
     // Dla trybu sequential przygotuj nową kolejkę
     if (this.gameMode === 'sequential') {
       this.prepareTurnOrder();
-      // Resetujemy turnCompleted dla wszystkich graczy w nowej kolejce
-      for (const player of this.players.values()) {
-        player.turnCompleted = false;
-      }
     }
     
     if (this.votingTimeout) {
@@ -592,6 +598,7 @@ class Game {
         hasDecided: p.hasDecided,
         hasGuessed: p.hasGuessed,
         turnCompleted: p.turnCompleted,
+        voteSubmitted: p.voteSubmitted,
         association: this.isVoting || this.isDeciding ? p.association : '',
         guess: p.guess
       })),
@@ -747,9 +754,11 @@ io.on('connection', (socket) => {
     
     const allSubmitted = game.submitAssociation(socket.id, association);
     
+    // Wyślij zaktualizowany stan gry do wszystkich
+    const gameState = game.getGameState();
     io.to(gameCode).emit('associationSubmitted', {
       playerId: socket.id,
-      gameState: game.getGameState()
+      gameState: gameState
     });
     
     if (game.gameMode === 'sequential') {
@@ -766,7 +775,7 @@ io.on('connection', (socket) => {
           io.to(gameCode).emit('decisionPhaseStarted', {
             gameState: game.getGameState()
           });
-        }, 1000);
+        }, 1500);
       }
     } else if (allSubmitted) {
       setTimeout(() => {
@@ -774,7 +783,7 @@ io.on('connection', (socket) => {
         io.to(gameCode).emit('decisionPhaseStarted', {
           gameState: game.getGameState()
         });
-      }, 1000);
+      }, 1500);
     }
   });
   
@@ -852,7 +861,7 @@ io.on('connection', (socket) => {
             gameState: game.getGameState()
           });
         }
-      }, 1000);
+      }, 1500);
     }
   });
   
@@ -892,7 +901,7 @@ io.on('connection', (socket) => {
             });
           }, 3000);
         }
-      }, 1000);
+      }, 1500);
     }
   });
   
