@@ -400,8 +400,7 @@ function updateGameInterface() {
             roleHint.innerHTML += `<br><small>Współimpostorzy: ${gameState.coImpostors.join(', ')}</small>`;
         }
         
-        // POPRAWKA: Impostor może wysyłać skojarzenia w każdej rundzie!
-        // Nie ukrywamy sekcji skojarzeń dla impostora
+        // Impostor może wysyłać skojarzenia w każdej rundzie!
         document.getElementById('guess-section').style.display = 'block';
         
     } else {
@@ -419,12 +418,32 @@ function updateGameInterface() {
     // Aktualizuj wskaźnik rundy w chacie
     document.getElementById('chat-round-indicator').textContent = `Runda: ${gameState.currentRound}`;
     
-    if (gameState.gameMode === 'sequential') {
-        const turnSection = document.getElementById('turn-section');
+    // KLUCZOWA POPRAWKA: Resetujemy wszystkie sekcje przed pokazaniem właściwej
+    document.getElementById('association-section').style.display = 'none';
+    document.getElementById('waiting-section').style.display = 'none';
+    document.getElementById('voting-section').style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('decision-section').style.display = 'none';
+    document.getElementById('turn-section').style.display = 'none';
+    document.getElementById('word-guessed-section').style.display = 'none';
+    
+    // Teraz pokazujemy właściwą sekcję w zależności od stanu gry
+    if (gameState.wordGuessed || gameState.guessFailed) {
+        document.getElementById('word-guessed-section').style.display = 'block';
+    } else if (gameState.isDeciding) {
+        showDecisionPhase();
+    } else if (gameState.isVoting) {
+        startVoting();
+    } else if (!gameState.isPlaying || gameState.gameEnded) {
+        // Gra zakończona
+    } else if (gameState.gameMode === 'sequential') {
+        // Tryb kolejkowy
         const currentTurnPlayerId = gameState.currentTurnPlayerId;
         
-        if (currentTurnPlayerId && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed && !gameState.guessFailed) {
+        if (currentTurnPlayerId) {
+            const turnSection = document.getElementById('turn-section');
             turnSection.style.display = 'block';
+            
             const currentPlayer = gameState.players.find(p => p.id === currentTurnPlayerId);
             document.getElementById('current-turn-player').innerHTML = `
                 <div class="player-card ${currentPlayer.isImpostor ? 'impostor' : ''}" style="display: inline-block; padding: 10px 20px;">
@@ -433,52 +452,22 @@ function updateGameInterface() {
             `;
             
             if (currentTurnPlayerId === socket.id) {
+                // To moja kolej
                 document.getElementById('association-section').style.display = 'block';
-                document.getElementById('waiting-section').style.display = 'none';
                 document.getElementById('association-instruction').textContent = 'Twoja kolej! Wpisz skojarzenie:';
                 document.getElementById('association-input').disabled = false;
                 document.getElementById('submit-association-btn').disabled = false;
                 
                 startTurnTimer();
             } else {
-                document.getElementById('association-section').style.display = 'none';
+                // Nie moja kolej
                 document.getElementById('waiting-section').style.display = 'block';
                 document.getElementById('waiting-message-text').textContent = `Oczekiwanie na ${currentPlayer.name}...`;
             }
-        } else {
-            turnSection.style.display = 'none';
         }
-    }
-    
-    if (gameState.wordGuessed || gameState.guessFailed) {
-        document.getElementById('association-section').style.display = 'none';
-        document.getElementById('waiting-section').style.display = 'none';
-        document.getElementById('voting-section').style.display = 'none';
-        document.getElementById('results-section').style.display = 'none';
-        document.getElementById('decision-section').style.display = 'none';
-        document.getElementById('turn-section').style.display = 'none';
-        document.getElementById('word-guessed-section').style.display = 'block';
-    } else if (gameState.isDeciding) {
-        showDecisionPhase();
-    } else if (gameState.isVoting) {
-        startVoting();
-    } else if (!gameState.isPlaying || gameState.gameEnded) {
-        document.getElementById('association-section').style.display = 'none';
-        document.getElementById('waiting-section').style.display = 'none';
-        document.getElementById('voting-section').style.display = 'none';
-        document.getElementById('results-section').style.display = 'none';
-        document.getElementById('decision-section').style.display = 'none';
-        document.getElementById('turn-section').style.display = 'none';
-        document.getElementById('word-guessed-section').style.display = 'none';
-    } else if (gameState.gameMode === 'simultaneous') {
-        // POPRAWKA: W trybie simultaneous impostor może wysyłać skojarzenia w każdej rundzie
+    } else {
+        // Tryb simultaneous (wszyscy jednocześnie)
         document.getElementById('association-section').style.display = 'block';
-        document.getElementById('waiting-section').style.display = 'none';
-        document.getElementById('voting-section').style.display = 'none';
-        document.getElementById('results-section').style.display = 'none';
-        document.getElementById('decision-section').style.display = 'none';
-        document.getElementById('turn-section').style.display = 'none';
-        document.getElementById('word-guessed-section').style.display = 'none';
         
         document.getElementById('association-input').value = '';
         document.getElementById('submitted-message').style.display = 'none';
@@ -486,10 +475,12 @@ function updateGameInterface() {
         
         const player = gameState.players.find(p => p.id === socket.id);
         if (player && player.hasSubmitted) {
+            // Gracz już wysłał skojarzenie
             document.getElementById('association-input').style.display = 'none';
             document.getElementById('submit-association-btn').style.display = 'none';
             document.getElementById('submitted-message').style.display = 'flex';
         } else {
+            // Gracz jeszcze nie wysłał skojarzenia
             document.getElementById('association-input').style.display = 'block';
             document.getElementById('submit-association-btn').style.display = 'flex';
         }
@@ -577,17 +568,11 @@ function updateProgress() {
 
 // Faza decyzji
 function showDecisionPhase() {
-    document.getElementById('association-section').style.display = 'none';
-    document.getElementById('waiting-section').style.display = 'none';
-    document.getElementById('voting-section').style.display = 'none';
-    document.getElementById('results-section').style.display = 'none';
-    document.getElementById('turn-section').style.display = 'none';
-    document.getElementById('word-guessed-section').style.display = 'none';
     document.getElementById('decision-section').style.display = 'block';
     
     displayAssociationsWithNames();
     
-    document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decysję...';
+    document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
     document.getElementById('vote-impostor-btn').disabled = false;
     document.getElementById('continue-game-btn').disabled = false;
 }
@@ -630,12 +615,6 @@ function displayAssociationsWithNames() {
 
 // Głosowanie
 function startVoting() {
-    document.getElementById('association-section').style.display = 'none';
-    document.getElementById('waiting-section').style.display = 'none';
-    document.getElementById('decision-section').style.display = 'none';
-    document.getElementById('results-section').style.display = 'none';
-    document.getElementById('turn-section').style.display = 'none';
-    document.getElementById('word-guessed-section').style.display = 'none';
     document.getElementById('voting-section').style.display = 'block';
     
     loadAssociationsForVoting();
@@ -726,7 +705,6 @@ function loadVoteOptions() {
 }
 
 function showVoteResults(results, outcome) {
-    document.getElementById('voting-section').style.display = 'none';
     document.getElementById('results-section').style.display = 'block';
     
     const resultsContent = document.getElementById('results-content');
@@ -1240,9 +1218,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Wpisz swoje skojarzenie!', 'error');
             return;
         }
-        
-        // POPRAWKA: Usunięto blokowanie impostorowi wysyłania skojarzeń w rundzie >1
-        // Impostor może wysyłać skojarzenia w każdej rundzie
         
         socket.emit('submitAssociation', { association });
         
