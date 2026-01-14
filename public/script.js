@@ -80,6 +80,11 @@ function initSocket() {
         console.log('Połączono z serwerem');
         playerId = socket.id;
         updateConnectionStatus(true);
+        
+        // Jeśli gracz był w trakcie gry, przeładuj stronę
+        if (gameCode && gameState && gameState.isPlaying) {
+            location.reload();
+        }
     });
     
     socket.on('disconnect', () => {
@@ -233,6 +238,15 @@ function initSocket() {
         }
     });
     
+    socket.on('forceReload', () => {
+        location.reload();
+    });
+    
+    socket.on('newChatMessage', (data) => {
+        gameState = data.gameState;
+        addChatMessage(data.chatMessage);
+    });
+    
     socket.on('playerLeft', (data) => {
         gameState = data.gameState;
         
@@ -349,20 +363,13 @@ function startGame() {
     if (playerInfo) {
         isImpostor = playerInfo.isImpostor;
         playerName = playerInfo.name;
-        
-        console.log("Player role check:", {
-            id: playerInfo.id,
-            name: playerInfo.name,
-            isImpostor: playerInfo.isImpostor,
-            gameIsPlaying: gameState.isPlaying,
-            playerWord: gameState.playerWord
-        });
     }
     
     switchScreen('game');
     updateGameInterface();
     updateGamePlayersList();
     updateSidebarInfo();
+    loadChatMessages();
 }
 
 function updateGameInterface() {
@@ -393,7 +400,13 @@ function updateGameInterface() {
             roleHint.innerHTML += `<br><small>Współimpostorzy: ${gameState.coImpostors.join(', ')}</small>`;
         }
         
-        if (gameState.gameMode === 'sequential' && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed && !gameState.guessFailed) {
+        // Sprawdź czy impostor może wysyłać skojarzenie (tylko w pierwszej rundzie)
+        if (gameState.currentRound > 1) {
+            // W drugiej i kolejnych rundach impostor nie może wysyłać skojarzeń
+            document.getElementById('association-section').style.display = 'none';
+            document.getElementById('guess-section').style.display = 'block';
+            document.getElementById('waiting-section').style.display = 'none';
+        } else if (gameState.gameMode === 'sequential' && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed && !gameState.guessFailed) {
             document.getElementById('guess-section').style.display = 'block';
         } else {
             document.getElementById('guess-section').style.display = 'none';
@@ -409,6 +422,9 @@ function updateGameInterface() {
         roleHint.style.color = '#8f94fb';
         document.getElementById('guess-section').style.display = 'none';
     }
+    
+    // Aktualizuj wskaźnik rundy w chacie
+    document.getElementById('chat-round-indicator').textContent = `Runda: ${gameState.currentRound}`;
     
     if (gameState.gameMode === 'sequential') {
         const turnSection = document.getElementById('turn-section');
@@ -462,29 +478,36 @@ function updateGameInterface() {
         document.getElementById('turn-section').style.display = 'none';
         document.getElementById('word-guessed-section').style.display = 'none';
     } else if (gameState.gameMode === 'simultaneous') {
-        document.getElementById('association-section').style.display = 'block';
-        document.getElementById('waiting-section').style.display = 'none';
-        document.getElementById('voting-section').style.display = 'none';
-        document.getElementById('results-section').style.display = 'none';
-        document.getElementById('decision-section').style.display = 'none';
-        document.getElementById('turn-section').style.display = 'none';
-        document.getElementById('word-guessed-section').style.display = 'none';
-        
-        document.getElementById('association-input').value = '';
-        document.getElementById('submitted-message').style.display = 'none';
-        document.getElementById('guessed-message').style.display = 'none';
-        
-        const player = gameState.players.find(p => p.id === socket.id);
-        if (player && player.hasSubmitted) {
-            document.getElementById('association-input').style.display = 'none';
-            document.getElementById('submit-association-btn').style.display = 'none';
-            document.getElementById('submitted-message').style.display = 'flex';
+        // Sprawdź czy impostor może wysyłać skojarzenie w trybie simultaneous
+        if (isImpostor && gameState.currentRound > 1) {
+            document.getElementById('association-section').style.display = 'none';
+            document.getElementById('guess-section').style.display = 'block';
+            document.getElementById('waiting-section').style.display = 'none';
         } else {
-            document.getElementById('association-input').style.display = 'block';
-            document.getElementById('submit-association-btn').style.display = 'flex';
+            document.getElementById('association-section').style.display = 'block';
+            document.getElementById('waiting-section').style.display = 'none';
+            document.getElementById('voting-section').style.display = 'none';
+            document.getElementById('results-section').style.display = 'none';
+            document.getElementById('decision-section').style.display = 'none';
+            document.getElementById('turn-section').style.display = 'none';
+            document.getElementById('word-guessed-section').style.display = 'none';
+            
+            document.getElementById('association-input').value = '';
+            document.getElementById('submitted-message').style.display = 'none';
+            document.getElementById('guessed-message').style.display = 'none';
+            
+            const player = gameState.players.find(p => p.id === socket.id);
+            if (player && player.hasSubmitted) {
+                document.getElementById('association-input').style.display = 'none';
+                document.getElementById('submit-association-btn').style.display = 'none';
+                document.getElementById('submitted-message').style.display = 'flex';
+            } else {
+                document.getElementById('association-input').style.display = 'block';
+                document.getElementById('submit-association-btn').style.display = 'flex';
+            }
+            
+            startTimer();
         }
-        
-        startTimer();
     }
     
     if (isHost && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed && !gameState.isVoting && !gameState.isDeciding) {
@@ -577,7 +600,7 @@ function showDecisionPhase() {
     
     displayAssociationsWithNames();
     
-    document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
+    document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decysję...';
     document.getElementById('vote-impostor-btn').disabled = false;
     document.getElementById('continue-game-btn').disabled = false;
 }
@@ -737,27 +760,6 @@ function showVoteResults(results, outcome) {
                         const impostor = gameState.players.find(p => p.id === impostorId);
                         return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
                             ${impostor.name} ${impostorId === outcome.votedOutId ? '✅ (wykryty)' : ''}
-                        </p>` : '';
-                    }).join('')}
-                    <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
-                    <p>Impostorzy widzieli podpowiedź: <strong>${gameState.hint}</strong></p>
-                </div>
-            </div>
-        `;
-    } else if (outcome.type === 'innocentVotedOut') {
-        const votedOutPlayer = gameState.players.find(p => p.id === outcome.votedOutId);
-        
-        resultsHTML = `
-            <div class="results-card lose">
-                <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
-                <p class="results-message">Głosowano na niewinnego gracza: <strong>${votedOutPlayer.name}</strong></p>
-                
-                <div class="impostor-reveal">
-                    <h4>PRAWDZIWI IMPOSTORZY:</h4>
-                    ${gameState.impostorIds.map(impostorId => {
-                        const impostor = gameState.players.find(p => p.id === impostorId);
-                        return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
-                            ${impostor.name}
                         </p>` : '';
                     }).join('')}
                     <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
@@ -942,6 +944,45 @@ function showFinalResults(reason) {
     switchScreen('finalResults');
 }
 
+// Funkcje dla chatu
+function loadChatMessages() {
+    const chatMessagesContainer = document.getElementById('chat-messages');
+    if (!chatMessagesContainer || !gameState || !gameState.chatMessages) return;
+    
+    chatMessagesContainer.innerHTML = '';
+    
+    gameState.chatMessages.forEach(chatMessage => {
+        addChatMessage(chatMessage);
+    });
+    
+    // Przewiń na dół
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+}
+
+function addChatMessage(chatMessage) {
+    const chatMessagesContainer = document.getElementById('chat-messages');
+    if (!chatMessagesContainer) return;
+    
+    const messageElement = document.createElement('div');
+    messageElement.className = 'chat-message';
+    
+    messageElement.innerHTML = `
+        <div class="message-header">
+            <div>
+                <span class="message-player">${chatMessage.playerName}</span>
+                <span class="message-round"> (Runda ${chatMessage.round})</span>
+            </div>
+            <div class="message-time">${chatMessage.timestamp}</div>
+        </div>
+        <div class="message-text">${chatMessage.message}</div>
+    `;
+    
+    chatMessagesContainer.appendChild(messageElement);
+    
+    // Przewiń na dół
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+}
+
 // Funkcje dla opcji zaawansowanych
 function loadWordsTable() {
     const words = [
@@ -1106,6 +1147,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Przycisk użycia własnego słowa
+    document.getElementById('use-custom-word-btn').addEventListener('click', () => {
+        const customWord = document.getElementById('custom-word').value.trim();
+        const customHint = document.getElementById('custom-hint').value.trim();
+        
+        if (!customWord) {
+            showNotification('Wprowadź słowo!', 'error');
+            return;
+        }
+        
+        if (!customHint) {
+            showNotification('Wprowadź podpowiedź!', 'error');
+            return;
+        }
+        
+        // Zresetuj wszystkie przyciski w tabeli
+        document.querySelectorAll('.word-select-btn').forEach(b => {
+            b.classList.remove('selected');
+            b.textContent = 'Wybierz';
+        });
+        
+        // Zapisz własne słowo
+        selectedWordForGame = { 
+            word: customWord.toUpperCase(), 
+            hint: customHint 
+        };
+        
+        // Pokaż informację o wybranym słowie
+        document.getElementById('selected-word-info').style.display = 'block';
+        document.getElementById('selected-word-text').textContent = customWord.toUpperCase();
+        document.getElementById('selected-hint-text').textContent = `Podpowiedź: ${customHint}`;
+        
+        // Aktywuj przycisk potwierdzenia
+        document.getElementById('confirm-word-btn').disabled = false;
+        
+        showNotification(`Wybrano własne słowo: ${customWord}`, 'success');
+    });
+    
     // Potwierdzenie wyboru słowa
     document.getElementById('confirm-word-btn').addEventListener('click', () => {
         if (selectedWordForGame) {
@@ -1121,6 +1200,8 @@ document.addEventListener('DOMContentLoaded', () => {
             b.classList.remove('selected');
             b.textContent = 'Wybierz';
         });
+        document.getElementById('custom-word').value = '';
+        document.getElementById('custom-hint').value = '';
         document.getElementById('selected-word-info').style.display = 'none';
         document.getElementById('confirm-word-btn').disabled = true;
     });
@@ -1170,6 +1251,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!association) {
             showNotification('Wpisz swoje skojarzenie!', 'error');
+            return;
+        }
+        
+        // Sprawdź czy impostor próbuje wysłać skojarzenie w drugiej rundzie
+        if (isImpostor && gameState && gameState.currentRound > 1) {
+            showNotification('Jesteś impostorem! W tej rundzie możesz tylko zgadywać hasło.', 'error');
             return;
         }
         
@@ -1233,6 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.disconnect();
         initSocket();
         switchScreen('start');
+        document.getElementById('fullscreen-back-button').classList.remove('active');
     });
     
     // Przycisk powrotu na pełnym ekranie
@@ -1242,6 +1330,33 @@ document.addEventListener('DOMContentLoaded', () => {
         initSocket();
         switchScreen('start');
     });
+    
+    // Chat - wysyłanie wiadomości
+    document.getElementById('send-chat-btn').addEventListener('click', () => {
+        sendChatMessage();
+    });
+    
+    document.getElementById('chat-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
+    
+    function sendChatMessage() {
+        const message = document.getElementById('chat-input').value.trim();
+        
+        if (!message) {
+            return;
+        }
+        
+        if (!gameState || !gameState.isPlaying) {
+            showNotification('Czat jest dostępny tylko podczas gry', 'error');
+            return;
+        }
+        
+        socket.emit('sendChatMessage', { message });
+        document.getElementById('chat-input').value = '';
+    }
     
     // Enter w polu skojarzenia
     document.getElementById('association-input').addEventListener('keypress', (e) => {
