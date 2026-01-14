@@ -231,12 +231,6 @@ class Game {
     const player = this.players.get(playerId);
     if (!player) return false;
     
-    // Sprawdź czy impostor może wysłać skojarzenie w tej rundzie
-    if (player.isImpostor && this.currentRound > 1) {
-      // Impostor w drugiej i kolejnych rundach nie może wysyłać skojarzeń
-      return false;
-    }
-    
     player.association = association;
     player.hasSubmitted = true;
     this.associations.set(playerId, association);
@@ -247,15 +241,9 @@ class Game {
       
       return allCompleted;
     } else {
-      // W trybie simultaneous, impostorzy nie wysyłają skojarzeń po pierwszej rundzie
-      const playersWhoCanSubmit = Array.from(this.players.values()).filter(p => {
-        if (p.isImpostor && this.currentRound > 1) {
-          return false;
-        }
-        return true;
-      });
-      
-      const allSubmitted = playersWhoCanSubmit.every(p => p.hasSubmitted);
+      // W trybie simultaneous - WSZYSCY gracze (w tym impostorzy) mogą wysyłać skojarzenia w każdej rundzie
+      const allPlayers = Array.from(this.players.values());
+      const allSubmitted = allPlayers.every(p => p.hasSubmitted);
       
       return allSubmitted;
     }
@@ -455,7 +443,7 @@ class Game {
     }
   }
 
-  nextRound(keepSameWord = true) {
+  nextRound(keepSameWord = false) {
     this.currentRound++;
     this.isVoting = false;
     this.isDeciding = false;
@@ -476,6 +464,13 @@ class Game {
     this.voteResults.clear();
     this.decisions.clear();
     this.guesses.clear();
+    
+    // Losuj nowe słowo dla każdej nowej rundy (chyba że host chce zachować)
+    if (!keepSameWord) {
+      this.currentWordPair = this.getRandomWordPair();
+      this.word = this.currentWordPair.word;
+      this.hint = this.currentWordPair.hint;
+    }
     
     if (this.gameMode === 'sequential') {
       this.prepareTurnOrder();
@@ -701,12 +696,8 @@ io.on('connection', (socket) => {
       }
     }
     
-    const player = game.players.get(socket.id);
-    // Sprawdź czy impostor próbuje wysłać skojarzenie w drugiej lub kolejnej rundzie
-    if (player && player.isImpostor && game.currentRound > 1) {
-      socket.emit('error', { message: 'Jesteś impostorem! W tej rundzie możesz tylko zgadywać hasło.' });
-      return;
-    }
+    // USUNIĘTE: Blokowanie impostorom wysyłania skojarzeń po pierwszej rundzie
+    // Teraz impostorzy mogą wysyłać skojarzenia w każdej rundzie
     
     const allSubmitted = game.submitAssociation(socket.id, association);
     
@@ -856,13 +847,15 @@ io.on('connection', (socket) => {
     }
   });
   
-  socket.on('nextRound', () => {
+  socket.on('nextRound', (data = {}) => {
     const gameCode = socket.gameCode;
     if (!gameCode || !games.has(gameCode)) return;
     
     const game = games.get(gameCode);
     
     if (socket.id !== game.hostId) return;
+    
+    const { keepSameWord = false } = data;
     
     if (game.gameEnded || game.currentRound >= game.rounds) {
       io.to(gameCode).emit('gameEnded', {
@@ -884,7 +877,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    game.nextRound(true);
+    game.nextRound(keepSameWord);
     
     io.to(gameCode).emit('nextRoundStarted', {
       gameState: game.getGameState()
