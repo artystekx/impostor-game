@@ -363,6 +363,12 @@ class Game {
   }
 
   submitVote(voterId, votedPlayerId) {
+    // Sprawdź czy gracz, na którego głosujemy, istnieje
+    if (!this.players.has(votedPlayerId)) {
+      console.log(`Game ${this.code}: Invalid vote - player ${votedPlayerId} doesn't exist`);
+      return null;
+    }
+    
     this.votes.set(voterId, votedPlayerId);
     
     const allVoted = Array.from(this.players.values())
@@ -382,13 +388,19 @@ class Game {
 
   calculateVoteResults() {
     const voteCounts = new Map();
+    
+    // Zlicz głosy, ignorując głosy na nieistniejących graczy
     for (const votedId of this.votes.values()) {
-      voteCounts.set(votedId, (voteCounts.get(votedId) || 0) + 1);
+      // Sprawdź czy gracz o takim ID istnieje
+      if (this.players.has(votedId)) {
+        voteCounts.set(votedId, (voteCounts.get(votedId) || 0) + 1);
+      }
     }
     
     let maxVotes = 0;
     let votedOutIds = [];
     
+    // Znajdź gracza z największą liczbą głosów
     for (const [playerId, count] of voteCounts) {
       if (count > maxVotes) {
         maxVotes = count;
@@ -400,56 +412,68 @@ class Game {
     
     this.voteResults = voteCounts;
     
+    // Jeśli remis (więcej niż 1 gracz z max głosami) lub brak głosów
+    if (votedOutIds.length !== 1) {
+      return {
+        votedOutIds: [],
+        voteCounts: Array.from(voteCounts.entries()),
+        maxVotes,
+        isTie: maxVotes > 0
+      };
+    }
+    
     return {
       votedOutIds,
       voteCounts: Array.from(voteCounts.entries()),
-      maxVotes
+      maxVotes,
+      isTie: false
     };
   }
 
   handleVoteResults(voteResults) {
-    const someoneVotedOut = voteResults.votedOutIds.length > 0 && voteResults.maxVotes > 0;
+    // Jeśli jest remis lub brak głosów
+    if (voteResults.isTie || voteResults.votedOutIds.length !== 1) {
+      return {
+        type: 'noOneVotedOut',
+        impostorsRemaining: this.impostorIds.length,
+        isTie: true
+      };
+    }
     
-    if (someoneVotedOut) {
-      const votedOutId = voteResults.votedOutIds[0];
-      const wasImpostor = this.impostorIds.includes(votedOutId);
+    const votedOutId = voteResults.votedOutIds[0];
+    const wasImpostor = this.impostorIds.includes(votedOutId);
+    
+    if (wasImpostor) {
+      const player = this.players.get(votedOutId);
+      if (player) {
+        player.isImpostor = false;
+      }
+      this.impostorIds = this.impostorIds.filter(id => id !== votedOutId);
       
-      if (wasImpostor) {
-        const player = this.players.get(votedOutId);
-        if (player) {
-          player.isImpostor = false;
-        }
-        this.impostorIds = this.impostorIds.filter(id => id !== votedOutId);
-        
-        if (this.impostorIds.length === 0) {
-          this.isPlaying = false;
-          this.gameEnded = true;
-          return {
-            type: 'impostorVotedOut',
-            votedOutId,
-            wasImpostor: true,
-            impostorsRemaining: 0,
-            gameEnded: true
-          };
-        }
-        
+      if (this.impostorIds.length === 0) {
+        this.isPlaying = false;
+        this.gameEnded = true;
         return {
           type: 'impostorVotedOut',
           votedOutId,
           wasImpostor: true,
-          impostorsRemaining: this.impostorIds.length
-        };
-      } else {
-        return {
-          type: 'innocentVotedOut',
-          votedOutId,
-          wasImpostor: false,
-          impostorsRemaining: this.impostorIds.length
+          impostorsRemaining: 0,
+          gameEnded: true
         };
       }
-    } else {
+      
       return {
-        type: 'noOneVotedOut',
+        type: 'impostorVotedOut',
+        votedOutId,
+        wasImpostor: true,
+        impostorsRemaining: this.impostorIds.length
+      };
+    } else {
+      // Niewinny gracz został wybrany
+      return {
+        type: 'innocentVotedOut',
+        votedOutId,
+        wasImpostor: false,
         impostorsRemaining: this.impostorIds.length
       };
     }
@@ -852,12 +876,14 @@ io.on('connection', (socket) => {
       setTimeout(() => {
         const voteOutcome = game.handleVoteResults(voteResults);
         
+        // Wyślij wyniki głosowania do wszystkich graczy
         io.to(gameCode).emit('voteResults', {
           results: voteResults,
           outcome: voteOutcome,
           gameState: game.getGameState()
         });
         
+        // Jeśli gra się zakończyła po głosowaniu
         if (voteOutcome.gameEnded) {
           setTimeout(() => {
             io.to(gameCode).emit('gameEnded', {
@@ -880,8 +906,13 @@ io.on('connection', (socket) => {
     
     const { keepSameWord = false } = data;
     
-    if (game.gameEnded || game.currentRound >= game.rounds) {
-      // Jeśli to ostatnia runda, przejdź do głosowania
+    // Sprawdź czy gra się już zakończyła
+    if (game.gameEnded) {
+      return;
+    }
+    
+    // Jeśli to ostatnia runda, przejdź do głosowania
+    if (game.currentRound >= game.rounds) {
       game.startVoting();
       io.to(gameCode).emit('votingStarted', {
         gameState: game.getGameState()
@@ -889,6 +920,7 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Jeśli nie ma już impostorów
     if (game.impostorIds.length === 0) {
       io.to(gameCode).emit('gameEnded', {
         reason: 'allImpostorsFound',
