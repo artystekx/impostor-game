@@ -97,6 +97,8 @@ class Game {
     this.wordGuessed = false;
     this.guessFailed = false;
     this.gameEnded = false;
+    this.turnTimeLeft = 30;
+    this.turnTimerInterval = null;
   }
 
   getRandomWordPair() {
@@ -220,16 +222,26 @@ class Game {
     
     this.currentTurnIndex++;
     
-    if (this.currentTurnIndex >= this.turnOrder.length) {
-      return false;
+    // Znajdź następnego gracza, który jeszcze nie wysłał skojarzenia
+    while (this.currentTurnIndex < this.turnOrder.length) {
+      const nextPlayerId = this.turnOrder[this.currentTurnIndex];
+      const nextPlayer = this.players.get(nextPlayerId);
+      if (nextPlayer && !nextPlayer.hasSubmitted) {
+        return nextPlayerId;
+      }
+      this.currentTurnIndex++;
     }
     
-    return this.getCurrentTurnPlayerId();
+    // Jeśli wszyscy gracze już wysłali lub nie ma więcej graczy
+    return null;
   }
 
   submitAssociation(playerId, association) {
     const player = this.players.get(playerId);
     if (!player) return false;
+    
+    // Jeśli gracz już wysłał skojarzenie, nie pozwól wysłać ponownie
+    if (player.hasSubmitted) return false;
     
     player.association = association;
     player.hasSubmitted = true;
@@ -237,7 +249,7 @@ class Game {
     
     if (this.gameMode === 'sequential') {
       const allCompleted = Array.from(this.players.values())
-        .every(p => p.turnCompleted);
+        .every(p => p.turnCompleted || p.hasSubmitted);
       
       return allCompleted;
     } else {
@@ -444,10 +456,9 @@ class Game {
   }
 
   nextRound(keepSameWord = false) {
-    // Sprawdź czy to już ostatnia runda
+    // Sprawdź czy to już ostatnia runda - jeśli tak, przejdź do głosowania
     if (this.currentRound >= this.rounds) {
-      this.isPlaying = false;
-      this.gameEnded = true;
+      this.startVoting();
       return this.getGameState();
     }
     
@@ -456,9 +467,9 @@ class Game {
     this.isDeciding = false;
     this.wordGuessed = false;
     this.guessFailed = false;
-    this.isPlaying = true; // WAŻNE: Ustawiamy z powrotem na true!
+    this.isPlaying = true;
     
-    // KLUCZOWA POPRAWKA: Resetujemy TYLKO stan wysłania, nie resetujemy turnCompleted dla trybu sequential
+    // Resetujemy tylko stan wysłania, nie resetujemy turnCompleted dla trybu sequential
     for (const player of this.players.values()) {
       player.hasSubmitted = false;
       player.association = '';
@@ -481,7 +492,7 @@ class Game {
       this.hint = this.currentWordPair.hint;
     }
     
-    // KLUCZOWA POPRAWKA: Dla trybu sequential przygotuj nową kolejkę
+    // Dla trybu sequential przygotuj nową kolejkę
     if (this.gameMode === 'sequential') {
       this.prepareTurnOrder();
       // Resetujemy turnCompleted dla wszystkich graczy w nowej kolejce
@@ -574,7 +585,7 @@ class Game {
     if (playerId) {
       const player = this.players.get(playerId);
       if (player) {
-        // KLUCZOWA POPRAWKA: impostor widzi podpowiedź, nie hasło
+        // impostor widzi podpowiedź, nie hasło
         if (player.isImpostor && this.isPlaying && !this.wordGuessed && !this.guessFailed) {
           state.playerWord = this.hint; // TYLKO podpowiedź dla impostora
           state.isImpostor = true;
@@ -870,14 +881,11 @@ io.on('connection', (socket) => {
     const { keepSameWord = false } = data;
     
     if (game.gameEnded || game.currentRound >= game.rounds) {
-      io.to(gameCode).emit('gameEnded', {
+      // Jeśli to ostatnia runda, przejdź do głosowania
+      game.startVoting();
+      io.to(gameCode).emit('votingStarted', {
         gameState: game.getGameState()
       });
-      
-      setTimeout(() => {
-        games.delete(gameCode);
-      }, 60000);
-      
       return;
     }
     
