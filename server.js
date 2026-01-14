@@ -458,13 +458,14 @@ class Game {
     this.guessFailed = false;
     this.isPlaying = true; // WAŻNE: Ustawiamy z powrotem na true!
     
+    // KLUCZOWA POPRAWKA: Resetujemy TYLKO stan wysłania, nie resetujemy turnCompleted dla trybu sequential
     for (const player of this.players.values()) {
       player.hasSubmitted = false;
       player.association = '';
       player.hasDecided = false;
       player.hasGuessed = false;
       player.guess = '';
-      player.turnCompleted = false;
+      // NIE resetujemy turnCompleted tutaj - to zostanie zresetowane w prepareTurnOrder()
     }
     
     this.associations.clear();
@@ -480,8 +481,13 @@ class Game {
       this.hint = this.currentWordPair.hint;
     }
     
+    // KLUCZOWA POPRAWKA: Dla trybu sequential przygotuj nową kolejkę
     if (this.gameMode === 'sequential') {
       this.prepareTurnOrder();
+      // Resetujemy turnCompleted dla wszystkich graczy w nowej kolejce
+      for (const player of this.players.values()) {
+        player.turnCompleted = false;
+      }
     }
     
     if (this.votingTimeout) {
@@ -719,6 +725,7 @@ io.on('connection', (socket) => {
           gameState: game.getGameState()
         });
       } else {
+        // Wszyscy gracze zakończyli tury
         setTimeout(() => {
           game.startDecisionPhase();
           io.to(gameCode).emit('decisionPhaseStarted', {
