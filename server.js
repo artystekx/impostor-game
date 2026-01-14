@@ -1,5 +1,4 @@
-[file name]: server.js
-[file content begin]
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -932,4 +931,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
 });
-[file content end]
