@@ -1,3 +1,5 @@
+[file name]: script.js
+[file content begin]
 // Zmienne globalne
 let socket;
 let gameCode = '';
@@ -76,6 +78,7 @@ function initSocket() {
     
     socket.on('connect', () => {
         console.log('Połączono z serwerem');
+        playerId = socket.id;
         updateConnectionStatus(true);
     });
     
@@ -131,6 +134,7 @@ function initSocket() {
             const startBtn = document.getElementById('start-game-btn');
             if (gameState.players.length >= 3) {
                 startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-play"></i> Rozpocznij grę';
             }
         } else {
             updateWaitingPlayersList();
@@ -192,10 +196,20 @@ function initSocket() {
         showGuessFailed(data);
     });
     
+    socket.on('voteResults', (data) => {
+        gameState = data.gameState;
+        showVoteResults(data.results, data.outcome);
+    });
+    
     socket.on('gameEnded', (data) => {
         gameState = data.gameState;
+        
+        // Zatrzymaj wszystkie timery
+        if (timerInterval) clearInterval(timerInterval);
+        if (turnTimerInterval) clearInterval(turnTimerInterval);
+        
         setTimeout(() => {
-            if (data.reason === 'wordGuessed' || data.reason === 'guessFailed') {
+            if (data.reason === 'wordGuessed' || data.reason === 'guessFailed' || data.reason === 'allImpostorsFound') {
                 showFinalResults(data.reason);
             } else {
                 showFinalResults('normal');
@@ -467,7 +481,7 @@ function updateGameInterface() {
         startTimer();
     }
     
-    if (isHost && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed) {
+    if (isHost && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed && !gameState.isVoting && !gameState.isDeciding) {
         document.getElementById('host-controls').style.display = 'flex';
     } else {
         document.getElementById('host-controls').style.display = 'none';
@@ -504,6 +518,10 @@ function startTurnTimer() {
         
         if (turnTimeLeft <= 0) {
             clearInterval(turnTimerInterval);
+            // Automatycznie wyślij puste skojarzenie jeśli czas minął
+            if (gameState.currentTurnPlayerId === socket.id) {
+                socket.emit('submitAssociation', { association: '(brak skojarzenia)' });
+            }
         }
     }, 1000);
 }
@@ -521,10 +539,10 @@ function updateProgress() {
     let submittedPlayers = 0;
     let totalPlayers = gameState.players.length;
     
-    if (gameState.gameMode === 'sequential') {
-        submittedPlayers = gameState.players.filter(p => p.turnCompleted).length;
-    } else if (gameState.isDeciding) {
+    if (gameState.isDeciding) {
         submittedPlayers = gameState.players.filter(p => p.hasDecided).length;
+    } else if (gameState.gameMode === 'sequential') {
+        submittedPlayers = gameState.players.filter(p => p.turnCompleted).length;
     } else {
         submittedPlayers = gameState.players.filter(p => p.hasSubmitted).length;
     }
@@ -657,57 +675,49 @@ function loadVoteOptions() {
     if (!gameState || !gameState.players) return;
     
     gameState.players.forEach(player => {
-        if (player.id !== socket.id) {
-            const voteBtn = document.createElement('button');
-            voteBtn.className = 'vote-btn';
-            voteBtn.textContent = player.name;
-            voteBtn.dataset.playerId = player.id;
-            
-            voteBtn.addEventListener('click', () => {
-                document.querySelectorAll('.vote-btn').forEach(btn => {
-                    btn.classList.remove('selected');
-                });
-                voteBtn.classList.add('selected');
-                document.getElementById('submit-vote-btn').disabled = false;
+        const voteBtn = document.createElement('button');
+        voteBtn.className = 'vote-btn';
+        voteBtn.textContent = player.name;
+        voteBtn.dataset.playerId = player.id;
+        
+        voteBtn.addEventListener('click', () => {
+            document.querySelectorAll('.vote-btn').forEach(btn => {
+                btn.classList.remove('selected');
             });
+            voteBtn.classList.add('selected');
             
-            voteOptions.appendChild(voteBtn);
-        }
-    });
-    
-    const submitVoteBtn = document.createElement('button');
-    submitVoteBtn.id = 'submit-vote-btn';
-    submitVoteBtn.className = 'btn btn-primary';
-    submitVoteBtn.innerHTML = '<i class="fas fa-vote-yea"></i> Zagłosuj';
-    submitVoteBtn.disabled = true;
-    
-    submitVoteBtn.addEventListener('click', () => {
-        const selectedVoteBtn = document.querySelector('.vote-btn.selected');
-        if (!selectedVoteBtn) return;
+            // Dodaj przycisk do oddania głosu jeśli nie istnieje
+            if (!document.getElementById('submit-vote-btn')) {
+                const submitVoteBtn = document.createElement('button');
+                submitVoteBtn.id = 'submit-vote-btn';
+                submitVoteBtn.className = 'btn btn-primary';
+                submitVoteBtn.innerHTML = '<i class="fas fa-vote-yea"></i> Zagłosuj';
+                submitVoteBtn.style.marginTop = '20px';
+                submitVoteBtn.style.width = '100%';
+                
+                submitVoteBtn.addEventListener('click', () => {
+                    const selectedVoteBtn = document.querySelector('.vote-btn.selected');
+                    if (!selectedVoteBtn) return;
+                    
+                    const votedPlayerId = selectedVoteBtn.dataset.playerId;
+                    socket.emit('submitVote', { votedPlayerId });
+                    
+                    submitVoteBtn.disabled = true;
+                    submitVoteBtn.textContent = 'Głos oddany';
+                    document.getElementById('voted-message').style.display = 'flex';
+                });
+                
+                voteOptions.appendChild(submitVoteBtn);
+            }
+            
+            document.getElementById('submit-vote-btn').disabled = false;
+        });
         
-        const votedPlayerId = selectedVoteBtn.dataset.playerId;
-        socket.emit('submitVote', { votedPlayerId });
-        
-        submitVoteBtn.disabled = true;
-        submitVoteBtn.textContent = 'Głos oddany';
-        document.getElementById('voted-message').style.display = 'flex';
-    });
-    
-    voteOptions.appendChild(submitVoteBtn);
-}
-
-function updateVoteProgress() {
-    if (!gameState || !gameState.players) return;
-    
-    gameState.votes.forEach(([voterId, votedId]) => {
-        const voteBtn = document.querySelector(`.vote-btn[data-player-id="${votedId}"]`);
-        if (voteBtn) {
-            voteBtn.classList.add('voted');
-        }
+        voteOptions.appendChild(voteBtn);
     });
 }
 
-function showVoteResults(results) {
+function showVoteResults(results, outcome) {
     document.getElementById('voting-section').style.display = 'none';
     document.getElementById('results-section').style.display = 'block';
     
@@ -715,48 +725,48 @@ function showVoteResults(results) {
     
     let resultsHTML = '';
     
-    if (results.votedOutIds.length > 0) {
-        const votedOutPlayer = gameState.players.find(p => p.id === results.votedOutIds[0]);
-        const wasImpostor = gameState.impostorIds.includes(results.votedOutIds[0]);
+    if (outcome.type === 'impostorVotedOut') {
+        const votedOutPlayer = gameState.players.find(p => p.id === outcome.votedOutId);
         
-        if (wasImpostor) {
-            resultsHTML = `
-                <div class="results-card win">
-                    <h2 class="results-title"><i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!</h2>
-                    <p class="results-message">Wykryto impostora: <strong>${votedOutPlayer.name}</strong></p>
-                    
-                    <div class="impostor-reveal">
-                        <h4>PRAWDZIWI IMPOSTORZY:</h4>
-                        ${gameState.impostorIds.map(impostorId => {
-                            const impostor = gameState.players.find(p => p.id === impostorId);
-                            return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
-                                ${impostor.name} ${results.votedOutIds.includes(impostorId) ? '✅ (wykryty)' : ''}
-                            </p>` : '';
-                        }).join('')}
-                        <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
-                    </div>
+        resultsHTML = `
+            <div class="results-card win">
+                <h2 class="results-title"><i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!</h2>
+                <p class="results-message">Wykryto impostora: <strong>${votedOutPlayer.name}</strong></p>
+                
+                <div class="impostor-reveal">
+                    <h4>PRAWDZIWI IMPOSTORZY:</h4>
+                    ${gameState.impostorIds.map(impostorId => {
+                        const impostor = gameState.players.find(p => p.id === impostorId);
+                        return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
+                            ${impostor.name} ${impostorId === outcome.votedOutId ? '✅ (wykryty)' : ''}
+                        </p>` : '';
+                    }).join('')}
+                    <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
+                    <p>Impostorzy widzieli podpowiedź: <strong>${gameState.hint}</strong></p>
                 </div>
-            `;
-        } else {
-            resultsHTML = `
-                <div class="results-card lose">
-                    <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
-                    <p class="results-message">Głosowano na niewinnego gracza: <strong>${votedOutPlayer.name}</strong></p>
-                    
-                    <div class="impostor-reveal">
-                        <h4>PRAWDZIWI IMPOSTORZY:</h4>
-                        ${gameState.impostorIds.map(impostorId => {
-                            const impostor = gameState.players.find(p => p.id === impostorId);
-                            return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
-                                ${impostor.name}
-                            </p>` : '';
-                        }).join('')}
-                        <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
-                        <p>Impostorzy widzieli podpowiedź: <strong>${gameState.hint}</strong></p>
-                    </div>
+            </div>
+        `;
+    } else if (outcome.type === 'innocentVotedOut') {
+        const votedOutPlayer = gameState.players.find(p => p.id === outcome.votedOutId);
+        
+        resultsHTML = `
+            <div class="results-card lose">
+                <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
+                <p class="results-message">Głosowano na niewinnego gracza: <strong>${votedOutPlayer.name}</strong></p>
+                
+                <div class="impostor-reveal">
+                    <h4>PRAWDZIWI IMPOSTORZY:</h4>
+                    ${gameState.impostorIds.map(impostorId => {
+                        const impostor = gameState.players.find(p => p.id === impostorId);
+                        return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
+                            ${impostor.name}
+                        </p>` : '';
+                    }).join('')}
+                    <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
+                    <p>Impostorzy widzieli podpowiedź: <strong>${gameState.hint}</strong></p>
                 </div>
-            `;
-        }
+            </div>
+        `;
     } else {
         resultsHTML = `
             <div class="results-card">
@@ -778,6 +788,11 @@ function showVoteResults(results) {
     }
     
     resultsContent.innerHTML = resultsHTML;
+    
+    // Pokaż przyciski hosta jeśli gra nie skończona
+    if (isHost && gameState.isPlaying && !gameState.gameEnded) {
+        document.getElementById('host-controls').style.display = 'flex';
+    }
 }
 
 function showWordGuessed(data) {
@@ -864,6 +879,16 @@ function showFinalResults(reason) {
                 </h2>
                 <p style="font-size: 1.3rem; color: #8ffb8f; margin: 20px 0;">
                     Impostor nie odgadł hasła: <strong>${gameState.word}</strong>
+                </p>
+        `;
+    } else if (reason === 'allImpostorsFound') {
+        resultsHTML = `
+            <div class="results-card win">
+                <h2 class="results-title">
+                    <i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!
+                </h2>
+                <p style="font-size: 1.3rem; color: #8ffb8f; margin: 20px 0;">
+                    Wszyscy impostorzy zostali wykryci!
                 </p>
         `;
     } else {
@@ -1077,4 +1102,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('submit-guess-btn').click();
         }
     });
+    
+    // Automatyczna wielka litera w kodzie gry
+    document.getElementById('game-code-input').addEventListener('input', function(e) {
+        this.value = this.value.toUpperCase();
+    });
 });
+[file content end]
