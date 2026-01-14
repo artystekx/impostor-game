@@ -400,17 +400,10 @@ function updateGameInterface() {
             roleHint.innerHTML += `<br><small>Współimpostorzy: ${gameState.coImpostors.join(', ')}</small>`;
         }
         
-        // Sprawdź czy impostor może wysyłać skojarzenie (tylko w pierwszej rundzie)
-        if (gameState.currentRound > 1) {
-            // W drugiej i kolejnych rundach impostor nie może wysyłać skojarzeń
-            document.getElementById('association-section').style.display = 'none';
-            document.getElementById('guess-section').style.display = 'block';
-            document.getElementById('waiting-section').style.display = 'none';
-        } else if (gameState.gameMode === 'sequential' && !gameState.isVoting && !gameState.isDeciding && !gameState.wordGuessed && !gameState.guessFailed) {
-            document.getElementById('guess-section').style.display = 'block';
-        } else {
-            document.getElementById('guess-section').style.display = 'none';
-        }
+        // POPRAWKA: Impostor może wysyłać skojarzenia w każdej rundzie!
+        // Nie ukrywamy sekcji skojarzeń dla impostora
+        document.getElementById('guess-section').style.display = 'block';
+        
     } else {
         // Gracz (nie impostor) widzi hasło
         wordDisplay.textContent = gameState.word; // Gracz widzi hasło
@@ -478,36 +471,30 @@ function updateGameInterface() {
         document.getElementById('turn-section').style.display = 'none';
         document.getElementById('word-guessed-section').style.display = 'none';
     } else if (gameState.gameMode === 'simultaneous') {
-        // Sprawdź czy impostor może wysyłać skojarzenie w trybie simultaneous
-        if (isImpostor && gameState.currentRound > 1) {
-            document.getElementById('association-section').style.display = 'none';
-            document.getElementById('guess-section').style.display = 'block';
-            document.getElementById('waiting-section').style.display = 'none';
+        // POPRAWKA: W trybie simultaneous impostor może wysyłać skojarzenia w każdej rundzie
+        document.getElementById('association-section').style.display = 'block';
+        document.getElementById('waiting-section').style.display = 'none';
+        document.getElementById('voting-section').style.display = 'none';
+        document.getElementById('results-section').style.display = 'none';
+        document.getElementById('decision-section').style.display = 'none';
+        document.getElementById('turn-section').style.display = 'none';
+        document.getElementById('word-guessed-section').style.display = 'none';
+        
+        document.getElementById('association-input').value = '';
+        document.getElementById('submitted-message').style.display = 'none';
+        document.getElementById('guessed-message').style.display = 'none';
+        
+        const player = gameState.players.find(p => p.id === socket.id);
+        if (player && player.hasSubmitted) {
+            document.getElementById('association-input').style.display = 'none';
+            document.getElementById('submit-association-btn').style.display = 'none';
+            document.getElementById('submitted-message').style.display = 'flex';
         } else {
-            document.getElementById('association-section').style.display = 'block';
-            document.getElementById('waiting-section').style.display = 'none';
-            document.getElementById('voting-section').style.display = 'none';
-            document.getElementById('results-section').style.display = 'none';
-            document.getElementById('decision-section').style.display = 'none';
-            document.getElementById('turn-section').style.display = 'none';
-            document.getElementById('word-guessed-section').style.display = 'none';
-            
-            document.getElementById('association-input').value = '';
-            document.getElementById('submitted-message').style.display = 'none';
-            document.getElementById('guessed-message').style.display = 'none';
-            
-            const player = gameState.players.find(p => p.id === socket.id);
-            if (player && player.hasSubmitted) {
-                document.getElementById('association-input').style.display = 'none';
-                document.getElementById('submit-association-btn').style.display = 'none';
-                document.getElementById('submitted-message').style.display = 'flex';
-            } else {
-                document.getElementById('association-input').style.display = 'block';
-                document.getElementById('submit-association-btn').style.display = 'flex';
-            }
-            
-            startTimer();
+            document.getElementById('association-input').style.display = 'block';
+            document.getElementById('submit-association-btn').style.display = 'flex';
         }
+        
+        startTimer();
     }
     
     if (isHost && gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed && !gameState.isVoting && !gameState.isDeciding) {
@@ -1254,11 +1241,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Sprawdź czy impostor próbuje wysłać skojarzenie w drugiej rundzie
-        if (isImpostor && gameState && gameState.currentRound > 1) {
-            showNotification('Jesteś impostorem! W tej rundzie możesz tylko zgadywać hasło.', 'error');
-            return;
-        }
+        // POPRAWKA: Usunięto blokowanie impostorowi wysyłania skojarzeń w rundzie >1
+        // Impostor może wysyłać skojarzenia w każdej rundzie
         
         socket.emit('submitAssociation', { association });
         
