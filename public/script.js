@@ -319,9 +319,9 @@ function updateGamePlayersList() {
     playersCount.textContent = gameState.players.length;
     
     gameState.players.forEach(player => {
-        // NIE pokazuj impostora na czerwono innym graczom (tylko jeśli gra się zakończyła)
+        // KOREKTA: NIE pokazuj impostora na czerwono innym graczom, tylko gdy gra się zakończyła lub to ja
         const showImpostor = player.isImpostor && 
-            (gameState.wordGuessed || gameState.guessFailed || gameState.gameEnded || player.id === socket.id);
+            (gameState.wordGuessed || gameState.guessFailed || gameState.gameEnded || gameState.isVoting || player.id === socket.id);
         
         const playerCard = document.createElement('div');
         playerCard.className = `player-card ${showImpostor ? 'impostor' : ''} ${player.isHost ? 'host' : ''}`;
@@ -446,6 +446,7 @@ function updateGameInterface() {
             turnSection.style.display = 'block';
             
             const currentPlayer = gameState.players.find(p => p.id === currentTurnPlayerId);
+            // KOREKTA: NIE pokazuj klasy impostor dla aktualnego gracza w sekcji tury
             document.getElementById('current-turn-player').innerHTML = `
                 <div class="player-card" style="display: inline-block; padding: 10px 20px;">
                     <div class="player-name">${currentPlayer.name}</div>
@@ -766,6 +767,26 @@ function showVoteResults(results, outcome) {
                     }).join('')}
                     <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
                     <p>Impostorzy widzieli podpowiedź: <strong>${gameState.hint}</strong></p>
+                </div>
+            </div>
+        `;
+    } else if (outcome.type === 'innocentVotedOut') {
+        const votedOutPlayer = gameState.players.find(p => p.id === outcome.votedOutId);
+        
+        resultsHTML = `
+            <div class="results-card lose">
+                <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
+                <p class="results-message">Niewinny gracz został wybrany: <strong>${votedOutPlayer.name}</strong></p>
+                
+                <div class="impostor-reveal">
+                    <h4>PRAWDZIWI IMPOSTORZY:</h4>
+                    ${gameState.impostorIds.map(impostorId => {
+                        const impostor = gameState.players.find(p => p.id === impostorId);
+                        return impostor ? `<p style="font-size: 1.5rem; font-weight: bold; color: #fb8f8f;">
+                            ${impostor.name}
+                        </p>` : '';
+                    }).join('')}
+                    <p>Hasło w tej rundzie było: <strong>${gameState.word}</strong></p>
                 </div>
             </div>
         `;
