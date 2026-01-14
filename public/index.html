@@ -6,6 +6,7 @@
     <title>Impostor stworzony przez jasia23</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="logo.png">
     <style>
         /* Dodatkowe style dla modal i tabeli słów */
         .modal-overlay {
@@ -15,22 +16,29 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             z-index: 1000;
             justify-content: center;
             align-items: center;
+            backdrop-filter: blur(10px);
         }
         
         .modal-content {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(145deg, #1a1a2e 0%, #2d1b69 100%);
             padding: 40px;
-            border-radius: 20px;
-            border: 2px solid #4e54c8;
-            max-width: 800px;
+            border-radius: 25px;
+            border: 3px solid #8a2be2;
+            max-width: 850px;
             width: 90%;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 25px 60px rgba(138, 43, 226, 0.4);
+            animation: modalSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px) scale(0.9); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
         }
         
         .modal-header {
@@ -38,61 +46,83 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #8a2be2;
         }
         
         .modal-header h2 {
-            color: #8f94fb;
-            font-size: 1.8rem;
+            color: #00ffcc;
+            font-size: 2rem;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
         }
         
         .close-modal {
-            font-size: 2rem;
-            color: #fb8f8f;
+            font-size: 2.5rem;
+            color: #ff3366;
             cursor: pointer;
             background: none;
             border: none;
+            transition: transform 0.3s ease;
+        }
+        
+        .close-modal:hover {
+            transform: rotate(90deg) scale(1.2);
         }
         
         .words-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
         
         .words-table th {
-            background: rgba(78, 84, 200, 0.3);
-            padding: 15px;
+            background: linear-gradient(90deg, #8a2be2, #ff3366);
+            padding: 18px;
             text-align: left;
-            color: #8f94fb;
-            border-bottom: 2px solid #4e54c8;
+            color: white;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         .words-table td {
-            padding: 15px;
-            border-bottom: 1px solid rgba(78, 84, 200, 0.2);
-            color: #b0b0d0;
+            padding: 18px;
+            border-bottom: 1px solid rgba(138, 43, 226, 0.2);
+            color: #e0e0ff;
+            background: rgba(45, 27, 105, 0.5);
         }
         
         .words-table tr:hover {
-            background: rgba(78, 84, 200, 0.1);
+            background: rgba(138, 43, 226, 0.2);
+            transform: translateX(5px);
+            transition: all 0.3s ease;
         }
         
         .word-select-btn {
-            background: #4e54c8;
+            background: linear-gradient(90deg, #00ccff, #8a2be2);
             color: white;
             border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
+            padding: 10px 20px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 204, 255, 0.3);
         }
         
         .word-select-btn:hover {
-            background: #8f94fb;
+            background: linear-gradient(90deg, #00ffcc, #00ccff);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 204, 255, 0.5);
         }
         
         .word-select-btn.selected {
-            background: #4ec84e;
+            background: linear-gradient(90deg, #00ff99, #00cc66);
+            box-shadow: 0 5px 20px rgba(0, 255, 153, 0.4);
         }
         
         .fullscreen-back-btn {
@@ -101,7 +131,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: linear-gradient(135deg, #1a1a2e 0%, #2d1b69 100%);
             display: none;
             flex-direction: column;
             justify-content: center;
@@ -111,130 +141,266 @@
         
         .fullscreen-back-btn.active {
             display: flex;
+            animation: fadeIn 0.5s ease;
         }
         
         .fullscreen-back-btn h2 {
             color: white;
-            font-size: 3rem;
+            font-size: 3.5rem;
             margin-bottom: 40px;
             text-align: center;
+            text-shadow: 0 0 20px rgba(0, 204, 255, 0.7);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
         
         .fullscreen-back-btn .btn {
             font-size: 2rem;
             padding: 25px 50px;
+            background: linear-gradient(90deg, #ff3366, #8a2be2);
+            border: none;
+            box-shadow: 0 10px 30px rgba(255, 51, 102, 0.4);
         }
 
         /* Style dla sekcji własnego słowa */
         .custom-word-section {
             margin-top: 30px;
-            padding: 20px;
-            background: rgba(78, 84, 200, 0.1);
-            border-radius: 10px;
-            border: 1px solid #4e54c8;
+            padding: 25px;
+            background: rgba(138, 43, 226, 0.15);
+            border-radius: 15px;
+            border: 2px dashed #8a2be2;
         }
 
         .custom-word-section h4 {
-            color: #8f94fb;
-            margin-bottom: 15px;
+            color: #00ffcc;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
+            font-size: 1.3rem;
         }
 
         /* Style dla chatu */
         .chat-container {
-            background-color: rgba(22, 33, 62, 0.9);
-            border-radius: 15px;
+            background: linear-gradient(145deg, rgba(26, 26, 46, 0.9) 0%, rgba(45, 27, 105, 0.9) 100%);
+            border-radius: 20px;
             padding: 25px;
-            border: 1px solid rgba(78, 84, 200, 0.3);
+            border: 2px solid rgba(138, 43, 226, 0.5);
             height: 500px;
             display: flex;
             flex-direction: column;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
         }
 
         .chat-header {
-            margin-bottom: 15px;
-            color: #8f94fb;
+            margin-bottom: 20px;
+            color: #00ffcc;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(138, 43, 226, 0.5);
         }
 
         .chat-messages {
             flex-grow: 1;
             overflow-y: auto;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             padding-right: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: #8a2be2 #1a1a2e;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #1a1a2e;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: linear-gradient(#8a2be2, #00ccff);
+            border-radius: 10px;
         }
 
         .chat-message {
-            margin-bottom: 12px;
-            padding: 10px;
-            background: rgba(15, 21, 48, 0.5);
-            border-radius: 8px;
-            border-left: 3px solid #4e54c8;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(138, 43, 226, 0.1);
+            border-radius: 15px;
+            border-left: 4px solid #00ccff;
+            position: relative;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .chat-message.system {
+            background: rgba(255, 51, 102, 0.1);
+            border-left-color: #ff3366;
+        }
+
+        .chat-message.association {
+            background: rgba(0, 204, 255, 0.1);
+            border-left-color: #00ccff;
+        }
+
+        .chat-message.guess {
+            background: rgba(0, 255, 153, 0.1);
+            border-left-color: #00ff99;
         }
 
         .message-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-size: 0.9rem;
         }
 
         .message-player {
             font-weight: bold;
-            color: #8f94fb;
+            color: #00ffcc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .message-round {
-            color: #8f94fb;
-            font-style: italic;
+        .message-player i {
             font-size: 0.8rem;
         }
 
+        .message-round {
+            color: #ffcc00;
+            font-style: italic;
+            font-size: 0.8rem;
+            background: rgba(255, 204, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
         .message-time {
-            color: #b0b0d0;
+            color: #a0a0c0;
             font-size: 0.8rem;
         }
 
         .message-text {
             color: #ffffff;
             word-wrap: break-word;
+            line-height: 1.5;
         }
 
         .chat-input-container {
             display: flex;
             gap: 10px;
+            margin-top: 10px;
         }
 
         #chat-input {
             flex-grow: 1;
-            padding: 12px;
-            background: rgba(15, 21, 48, 0.8);
-            border: 1px solid rgba(45, 53, 97, 0.8);
+            padding: 15px;
+            background: rgba(26, 26, 46, 0.8);
+            border: 2px solid rgba(138, 43, 226, 0.5);
             color: #ffffff;
-            border-radius: 8px;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        #chat-input:focus {
+            border-color: #00ccff;
+            box-shadow: 0 0 15px rgba(0, 204, 255, 0.3);
+            outline: none;
         }
 
         #send-chat-btn {
-            background: #4e54c8;
+            background: linear-gradient(90deg, #00ccff, #8a2be2);
             color: white;
             border: none;
-            padding: 0 20px;
-            border-radius: 8px;
+            padding: 0 25px;
+            border-radius: 12px;
             cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        #send-chat-btn:hover {
+            background: linear-gradient(90deg, #00ffcc, #00ccff);
+            transform: scale(1.05);
+        }
+
+        /* Logo i Discord */
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .logo-discord-section {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .game-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 3px solid #8a2be2;
+            transition: transform 0.3s ease;
+        }
+
+        .game-logo:hover {
+            transform: rotate(5deg) scale(1.05);
+        }
+
+        .game-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .discord-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #7289da;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            padding: 10px 20px;
+            background: rgba(114, 137, 218, 0.1);
+            border-radius: 10px;
+            border: 2px solid #7289da;
+            transition: all 0.3s ease;
+        }
+
+        .discord-link:hover {
+            background: rgba(114, 137, 218, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(114, 137, 218, 0.3);
         }
 
         /* Responsywność dla chatu */
-        @media (max-width: 1100px) {
+        @media (max-width: 1200px) {
             .sidebar {
                 grid-template-columns: 1fr;
             }
             
             .chat-container {
-                height: 300px;
+                height: 350px;
             }
         }
     </style>
@@ -242,8 +408,20 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-user-secret"></i> Gra Impostor Jasiu23</h1>
-            <p class="subtitle">Wszyscy dostają hasło, impostor tylko podpowiedź. Znajdź oszusta po skojarzeniach! (23)</p>
+            <div class="header-content">
+                <div class="logo-discord-section">
+                    <div class="game-logo">
+                        <img src="logo.png" alt="Impostor Game Logo">
+                    </div>
+                    <a href="https://discord.gg/EGyBDYNW" target="_blank" class="discord-link">
+                        <i class="fab fa-discord"></i> Szynek Poland Discord
+                    </a>
+                </div>
+                <div class="title-section">
+                    <h1><i class="fas fa-user-secret"></i> Gra Impostor Jasiu23</h1>
+                    <p class="subtitle">Wszyscy dostają hasło, impostor tylko podpowiedź. Znajdź oszusta po skojarzeniach! (23)</p>
+                </div>
+            </div>
         </header>
         
         <!-- Ekran startowy -->
@@ -494,7 +672,7 @@
                                 <i class="fas fa-lightbulb"></i> Zgadnij
                             </button>
                         </div>
-                        <p style="font-size: 0.9rem; color: #fb8f8f; margin-top: 5px;">
+                        <p style="font-size: 0.9rem; color: #ff3366; margin-top: 5px;">
                             Jeśli odgadniesz hasło, wygrasz rundę!
                         </p>
                     </div>
@@ -525,8 +703,8 @@
                 
                 <!-- SEKCJA: Decyzja po rundzie -->
                 <div id="decision-section" style="display: none;">
-                    <div class="panel" style="background-color: rgba(15, 21, 48, 0.8); margin-top: 20px;">
-                        <h3 style="text-align: center; color: #8f94fb;">
+                    <div class="panel" style="background: linear-gradient(145deg, rgba(26, 26, 46, 0.9) 0%, rgba(45, 27, 105, 0.9) 100%); margin-top: 20px;">
+                        <h3 style="text-align: center; color: #00ffcc;">
                             <i class="fas fa-question-circle"></i> Co robimy dalej?
                         </h3>
                         <p style="text-align: center; margin-bottom: 30px;">
@@ -534,7 +712,7 @@
                         </p>
                         
                         <div class="associations-list" style="margin-bottom: 30px;">
-                            <h4 style="text-align: center; margin-bottom: 20px; color: #b0b0d0;">
+                            <h4 style="text-align: center; margin-bottom: 20px; color: #ffcc00;">
                                 <i class="fas fa-list"></i> Skojarzenia z tej rundy:
                             </h4>
                             <div id="decision-associations-list" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
@@ -553,7 +731,7 @@
                             </div>
                         </div>
                         
-                        <div id="decision-status" style="text-align: center; margin-top: 20px; color: #8f94fb; font-style: italic;">
+                        <div id="decision-status" style="text-align: center; margin-top: 20px; color: #00ffcc; font-style: italic;">
                             Oczekiwanie na twoją decyzję...
                         </div>
                     </div>
@@ -596,8 +774,8 @@
                 
                 <!-- Sekcja gdy impostor odgadł hasło -->
                 <div id="word-guessed-section" style="display: none;">
-                    <div class="panel" style="background-color: rgba(200, 78, 78, 0.1); border-color: #c84e4e; text-align: center;">
-                        <h2 style="color: #fb8f8f;">
+                    <div class="panel" style="background: linear-gradient(145deg, rgba(255, 51, 102, 0.15) 0%, rgba(138, 43, 226, 0.15) 100%); border-color: #ff3366; text-align: center;">
+                        <h2 style="color: #ff3366;">
                             <i class="fas fa-trophy"></i> IMPOSTOR ODGADŁ HASŁO!
                         </h2>
                         <div id="word-guessed-content">
@@ -628,7 +806,7 @@
                 <div class="sidebar-section chat-container">
                     <div class="chat-header">
                         <h3><i class="fas fa-comments"></i> Czat</h3>
-                        <span id="chat-round-indicator">Runda: 1</span>
+                        <span id="chat-round-indicator" class="message-round">Runda: 1</span>
                     </div>
                     <div id="chat-messages" class="chat-messages">
                         <!-- Wiadomości czatu będą dodawane dynamicznie -->
@@ -670,8 +848,8 @@
                 </div>
                 
                 <div id="password-section">
-                    <h3 style="color: #8f94fb; margin-bottom: 20px;">Dostęp do zaawansowanych ustawień (chuj nigdy hasła nie dostaniesz więc nie pytaj jasia)</h3>
-                    <p style="color: #b0b0d0; margin-bottom: 20px;">Aby uzyskać dostęp do opcji wyboru słowa, wprowadź hasło:</p>
+                    <h3 style="color: #00ffcc; margin-bottom: 20px;">Dostęp do zaawansowanych ustawień</h3>
+                    <p style="color: #e0e0ff; margin-bottom: 20px;">Aby uzyskać dostęp do opcji wyboru słowa, wprowadź hasło:</p>
                     
                     <div class="input-group" style="margin-bottom: 30px;">
                         <label for="advanced-password">
@@ -688,8 +866,8 @@
                 </div>
                 
                 <div id="word-selection-section" style="display: none;">
-                    <h3 style="color: #8f94fb; margin-bottom: 20px;">Wybierz słowo dla pierwszej rundy</h3>
-                    <p style="color: #b0b0d0; margin-bottom: 20px;">Wybierz jedno z poniższych słów lub wprowadź własne:</p>
+                    <h3 style="color: #00ffcc; margin-bottom: 20px;">Wybierz słowo dla pierwszej rundy</h3>
+                    <p style="color: #e0e0ff; margin-bottom: 20px;">Wybierz jedno z poniższych słów lub wprowadź własne:</p>
                     
                     <!-- Sekcja własnego słowa -->
                     <div class="custom-word-section">
@@ -715,13 +893,13 @@
                     </div>
                     
                     <!-- Informacja o wybranym słowie -->
-                    <div id="selected-word-info" style="background: rgba(78, 84, 200, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 30px; display: none;">
-                        <h4 style="color: #8ffb8f; margin-bottom: 10px;">
+                    <div id="selected-word-info" style="background: linear-gradient(145deg, rgba(0, 204, 255, 0.15) 0%, rgba(138, 43, 226, 0.15) 100%); padding: 20px; border-radius: 15px; margin-bottom: 30px; display: none;">
+                        <h4 style="color: #00ff99; margin-bottom: 10px;">
                             <i class="fas fa-check-circle"></i> Wybrano słowo
                         </h4>
-                        <p style="color: #ffffff; font-size: 1.3rem; margin-bottom: 5px;" id="selected-word-text"></p>
-                        <p style="color: #b0b0d0;" id="selected-hint-text"></p>
-                        <p style="color: #8f94fb; font-size: 0.9rem; margin-top: 5px;">
+                        <p style="color: #ffffff; font-size: 1.5rem; margin-bottom: 5px; font-weight: bold;" id="selected-word-text"></p>
+                        <p style="color: #e0e0ff;" id="selected-hint-text"></p>
+                        <p style="color: #00ccff; font-size: 0.9rem; margin-top: 5px;">
                             <i class="fas fa-info-circle"></i> To słowo będzie użyte w pierwszej rundzie
                         </p>
                     </div>
