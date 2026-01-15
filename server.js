@@ -832,27 +832,36 @@ io.on('connection', (socket) => {
   console.log('Nowe połączenie:', socket.id);
   
   socket.on('createGame', (data) => {
-    const { playerName, rounds, roundTime, numImpostors, gameMode, customWordData, decisionTime } = data;
-    
-    let code;
-    do {
-      code = generateGameCode();
-    } while (games.has(code));
-    
-    const game = new Game(code, socket.id, rounds, roundTime, numImpostors, gameMode, customWordData, decisionTime);
-    games.set(code, game);
-    
-    game.addPlayer(socket.id, playerName || 'Host');
-    
-    socket.join(code);
-    socket.gameCode = code;
-    
-    socket.emit('gameCreated', { 
-      code,
-      gameState: game.getGameState(socket.id)
-    });
-    
-    console.log(`Gra utworzona: ${code} przez ${socket.id}`);
+    try {
+      console.log('Otrzymano createGame:', data);
+      const { playerName, rounds, roundTime, numImpostors, gameMode, customWordData, decisionTime } = data;
+      
+      let code;
+      do {
+        code = generateGameCode();
+      } while (games.has(code));
+      
+      const game = new Game(code, socket.id, rounds, roundTime, numImpostors, gameMode, customWordData, decisionTime);
+      games.set(code, game);
+      
+      game.addPlayer(socket.id, playerName || 'Host');
+      
+      socket.join(code);
+      socket.gameCode = code;
+      
+      const gameState = game.getGameState(socket.id);
+      console.log('Wysyłanie gameCreated dla:', socket.id, 'Kod:', code);
+      
+      socket.emit('gameCreated', { 
+        code,
+        gameState: gameState
+      });
+      
+      console.log(`Gra utworzona: ${code} przez ${socket.id}`);
+    } catch (error) {
+      console.error('Błąd przy tworzeniu gry:', error);
+      socket.emit('error', { message: 'Błąd przy tworzeniu gry: ' + error.message });
+    }
   });
   
   socket.on('joinGame', (data) => {
