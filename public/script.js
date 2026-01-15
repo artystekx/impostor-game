@@ -8,15 +8,17 @@ let isImpostor = false;
 let currentRound = 0;
 let totalRounds = 0;
 let roundTime = 45;
-let votingTime = 30;
+let decisionTime = 30;
 let numImpostors = 1;
 let gameMode = 'simultaneous';
 let timerInterval = null;
 let turnTimerInterval = null;
 let votingTimerInterval = null;
+let decisionTimerInterval = null;
 let timeLeft = 45;
 let turnTimeLeft = 30;
 let votingTimeLeft = 30;
+let decisionTimeLeft = 30;
 let gameState = null;
 let customWordData = null;
 let selectedWordForGame = null;
@@ -280,6 +282,7 @@ function initSocket() {
         if (timerInterval) clearInterval(timerInterval);
         if (turnTimerInterval) clearInterval(turnTimerInterval);
         if (votingTimerInterval) clearInterval(votingTimerInterval);
+        if (decisionTimerInterval) clearInterval(decisionTimerInterval);
         
         setTimeout(() => {
             if (data.reason === 'wordGuessed' || data.reason === 'guessFailed' || data.reason === 'allImpostorsFound') {
@@ -448,7 +451,7 @@ function startGame() {
     currentRound = gameState.currentRound;
     totalRounds = gameState.rounds;
     roundTime = gameState.roundTime;
-    votingTime = 30; // Stały czas na głosowanie
+    decisionTime = gameState.decisionTime || 30;
     numImpostors = gameState.numImpostors;
     gameMode = gameState.gameMode;
     
@@ -555,6 +558,10 @@ function updateGameInterface() {
                 `;
             }
             
+            // ✅ NAPRAWIONE: Timer widoczny dla wszystkich graczy w trybie sequential
+            // Uruchom timer tury dla wszystkich (nie tylko dla gracza który pisze)
+            startTurnTimer();
+            
             // Sprawdzamy czy to moja kolej i czy już wysłałem skojarzenie
             const player = gameState.players.find(p => p.id === socket.id);
             
@@ -578,9 +585,6 @@ function updateGameInterface() {
                     // Resetujemy pole input
                     document.getElementById('association-input').style.display = 'block';
                     document.getElementById('submit-association-btn').style.display = 'flex';
-                    
-                    // Uruchom timer tury
-                    startTurnTimer();
                 }
             } else {
                 // Nie moja kolej
@@ -677,16 +681,33 @@ function startTurnTimer() {
 function startVotingTimer() {
     if (votingTimerInterval) clearInterval(votingTimerInterval);
     
-    votingTimeLeft = votingTime;
+    votingTimeLeft = decisionTime;
     updateTimerDisplay(votingTimeLeft);
     
     votingTimerInterval = setInterval(() => {
         votingTimeLeft--;
         updateTimerDisplay(votingTimeLeft);
         
-        if (votingTimeLeft <= 0 && autoSubmitEnabled) {
+        if (votingTimeLeft <= 0) {
             clearInterval(votingTimerInterval);
             showNotification('Czas na głosowanie minął!', 'warning');
+        }
+    }, 1000);
+}
+
+function startDecisionTimer() {
+    if (decisionTimerInterval) clearInterval(decisionTimerInterval);
+    
+    decisionTimeLeft = decisionTime;
+    updateTimerDisplay(decisionTimeLeft);
+    
+    decisionTimerInterval = setInterval(() => {
+        decisionTimeLeft--;
+        updateTimerDisplay(decisionTimeLeft);
+        
+        if (decisionTimeLeft <= 0) {
+            clearInterval(decisionTimerInterval);
+            showNotification('Czas na decyzję minął!', 'warning');
         }
     }, 1000);
 }
@@ -741,6 +762,9 @@ function showDecisionPhase() {
     document.getElementById('decision-status').textContent = 'Oczekiwanie na twoją decyzję...';
     document.getElementById('vote-impostor-btn').disabled = false;
     document.getElementById('continue-game-btn').disabled = false;
+    
+    // ✅ NAPRAWIONE: Uruchom timer dla fazy decyzji
+    startDecisionTimer();
 }
 
 function displayAssociationsWithNames() {
@@ -1023,6 +1047,7 @@ function startNextRound() {
     if (timerInterval) clearInterval(timerInterval);
     if (turnTimerInterval) clearInterval(turnTimerInterval);
     if (votingTimerInterval) clearInterval(votingTimerInterval);
+    if (decisionTimerInterval) clearInterval(decisionTimerInterval);
     
     // Resetujemy stan inputów dla nowej rundy
     document.getElementById('association-input').value = '';
@@ -1310,6 +1335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const roundTime = document.getElementById('round-time').value;
         const numImpostors = document.getElementById('num-impostors').value;
         const gameMode = document.getElementById('game-mode').value;
+        const decisionTime = document.getElementById('decision-time').value;
         
         if (!playerName) {
             showNotification('Wpisz swój pseudonim!', 'error');
@@ -1322,6 +1348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             roundTime,
             numImpostors,
             gameMode,
+            decisionTime,
             customWordData: selectedWordForGame
         });
         
@@ -1539,32 +1566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         switchScreen('start');
     });
     
-    // Chat - wysyłanie wiadomości
-    document.getElementById('send-chat-btn').addEventListener('click', () => {
-        sendChatMessage();
-    });
-    
-    document.getElementById('chat-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
-    
-    function sendChatMessage() {
-        const message = document.getElementById('chat-input').value.trim();
-        
-        if (!message) {
-            return;
-        }
-        
-        if (!gameState || !gameState.isPlaying) {
-            showNotification('Czat jest dostępny tylko podczas gry', 'error');
-            return;
-        }
-        
-        socket.emit('sendChatMessage', { message });
-        document.getElementById('chat-input').value = '';
-    }
+    // ✅ NAPRAWIONE: Usunięto możliwość wpisywania w chat - tylko systemowe powiadomienia
     
     // Enter w polu skojarzenia
     document.getElementById('association-input').addEventListener('keypress', (e) => {
