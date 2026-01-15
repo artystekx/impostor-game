@@ -444,7 +444,7 @@ function updateGamePlayersList() {
 
 // Rozpoczęcie gry
 function startGame() {
-    gameState = gameState;
+    // ✅ NAPRAWIONE: Usunięto bezsensowne przypisanie gameState = gameState;
     currentRound = gameState.currentRound;
     totalRounds = gameState.rounds;
     roundTime = gameState.roundTime;
@@ -540,11 +540,20 @@ function updateGameInterface() {
             turnSection.style.display = 'block';
             
             const currentPlayer = gameState.players.find(p => p.id === currentTurnPlayerId);
-            document.getElementById('current-turn-player').innerHTML = `
-                <div class="player-card" style="display: inline-block; padding: 15px 30px;">
-                    <div class="player-name">${currentPlayer.name}</div>
-                </div>
-            `;
+            // ✅ NAPRAWIONE: Dodano sprawdzenie czy gracz istnieje
+            if (currentPlayer) {
+                document.getElementById('current-turn-player').innerHTML = `
+                    <div class="player-card" style="display: inline-block; padding: 15px 30px;">
+                        <div class="player-name">${currentPlayer.name}</div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('current-turn-player').innerHTML = `
+                    <div class="player-card" style="display: inline-block; padding: 15px 30px;">
+                        <div class="player-name">Nieznany gracz</div>
+                    </div>
+                `;
+            }
             
             // Sprawdzamy czy to moja kolej i czy już wysłałem skojarzenie
             const player = gameState.players.find(p => p.id === socket.id);
@@ -577,7 +586,9 @@ function updateGameInterface() {
                 // Nie moja kolej
                 document.getElementById('association-section').style.display = 'none';
                 document.getElementById('waiting-section').style.display = 'block';
-                document.getElementById('waiting-message-text').textContent = `Oczekiwanie na ${currentPlayer.name}...`;
+                // ✅ NAPRAWIONE: Dodano sprawdzenie przed użyciem currentPlayer.name
+                const waitingPlayerName = currentPlayer ? currentPlayer.name : 'gracza';
+                document.getElementById('waiting-message-text').textContent = `Oczekiwanie na ${waitingPlayerName}...`;
             }
         }
     } else {
@@ -877,44 +888,66 @@ function showVoteResults(results, outcome) {
     if (outcome.type === 'impostorVotedOut') {
         const votedOutPlayer = gameState.players.find(p => p.id === outcome.votedOutId);
         
-        resultsHTML = `
-            <div class="results-card win">
-                <h2 class="results-title"><i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!</h2>
-                <p class="results-message">Wykryto impostora: <strong style="color: #00ff99;">${votedOutPlayer.name}</strong></p>
-                
-                <div class="impostor-reveal">
-                    <h4>PRAWDZIWI IMPOSTORZY:</h4>
-                    ${gameState.impostorIds.map(impostorId => {
-                        const impostor = gameState.players.find(p => p.id === impostorId);
-                        return impostor ? `<p style="font-size: 1.8rem; font-weight: bold; color: #ff3366; margin: 10px 0;">
-                            ${impostor.name} ${impostorId === outcome.votedOutId ? '✅ (wykryty)' : ''}
-                        </p>` : '';
-                    }).join('')}
-                    <p style="font-size: 1.2rem; margin-top: 20px;">Hasło w tej rundzie było: <strong style="color: #00ccff;">${gameState.word}</strong></p>
-                    <p style="font-size: 1.2rem;">Impostorzy widzieli podpowiedź: <strong style="color: #ffcc00;">${gameState.hint}</strong></p>
+        // ✅ NAPRAWIONE: Dodano sprawdzenie czy gracz istnieje
+        if (!votedOutPlayer) {
+            console.error('Gracz nie został znaleziony:', outcome.votedOutId);
+            resultsHTML = `
+                <div class="results-card win">
+                    <h2 class="results-title"><i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!</h2>
+                    <p class="results-message">Impostor został wykryty!</p>
                 </div>
-            </div>
-        `;
+            `;
+        } else {
+            resultsHTML = `
+                <div class="results-card win">
+                    <h2 class="results-title"><i class="fas fa-trophy"></i> GRACZE WYGRYWAJĄ!</h2>
+                    <p class="results-message">Wykryto impostora: <strong style="color: #00ff99;">${votedOutPlayer.name}</strong></p>
+                    
+                    <div class="impostor-reveal">
+                        <h4>PRAWDZIWI IMPOSTORZY:</h4>
+                        ${gameState.impostorIds.map(impostorId => {
+                            const impostor = gameState.players.find(p => p.id === impostorId);
+                            return impostor ? `<p style="font-size: 1.8rem; font-weight: bold; color: #ff3366; margin: 10px 0;">
+                                ${impostor.name} ${impostorId === outcome.votedOutId ? '✅ (wykryty)' : ''}
+                            </p>` : '';
+                        }).join('')}
+                        <p style="font-size: 1.2rem; margin-top: 20px;">Hasło w tej rundzie było: <strong style="color: #00ccff;">${gameState.word}</strong></p>
+                        <p style="font-size: 1.2rem;">Impostorzy widzieli podpowiedź: <strong style="color: #ffcc00;">${gameState.hint}</strong></p>
+                    </div>
+                </div>
+            `;
+        }
     } else if (outcome.type === 'innocentVotedOut') {
         const votedOutPlayer = gameState.players.find(p => p.id === outcome.votedOutId);
         
-        resultsHTML = `
-            <div class="results-card lose">
-                <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
-                <p class="results-message">Niewinny gracz został wybrany: <strong style="color: #ff3366;">${votedOutPlayer.name}</strong></p>
-                
-                <div class="impostor-reveal">
-                    <h4>PRAWDZIWI IMPOSTORZY:</h4>
-                    ${gameState.impostorIds.map(impostorId => {
-                        const impostor = gameState.players.find(p => p.id === impostorId);
-                        return impostor ? `<p style="font-size: 1.8rem; font-weight: bold; color: #ff3366; margin: 10px 0;">
-                            ${impostor.name}
-                        </p>` : '';
-                    }).join('')}
-                    <p style="font-size: 1.2rem; margin-top: 20px;">Hasło w tej rundzie było: <strong style="color: #00ccff;">${gameState.word}</strong></p>
+        // ✅ NAPRAWIONE: Dodano sprawdzenie czy gracz istnieje
+        if (!votedOutPlayer) {
+            console.error('Gracz nie został znaleziony:', outcome.votedOutId);
+            resultsHTML = `
+                <div class="results-card lose">
+                    <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
+                    <p class="results-message">Niewinny gracz został wybrany.</p>
                 </div>
-            </div>
-        `;
+            `;
+        } else {
+            resultsHTML = `
+                <div class="results-card lose">
+                    <h2 class="results-title"><i class="fas fa-user-secret"></i> IMPOSTORZY WYGRYWAJĄ!</h2>
+                    <p class="results-message">Niewinny gracz został wybrany: <strong style="color: #ff3366;">${votedOutPlayer.name}</strong></p>
+                    
+                    <div class="impostor-reveal">
+                        <h4>PRAWDZIWI IMPOSTORZY:</h4>
+                        ${gameState.impostorIds.map(impostorId => {
+                            const impostor = gameState.players.find(p => p.id === impostorId);
+                            return impostor ? `<p style="font-size: 1.8rem; font-weight: bold; color: #ff3366; margin: 10px 0;">
+                                ${impostor.name}
+                            </p>` : '';
+                        }).join('')}
+                        <p style="font-size: 1.2rem; margin-top: 20px;">Hasło w tej rundzie było: <strong style="color: #00ccff;">${gameState.word}</strong></p>
+                    </div>
+                </div>
+            `;
+        }
     } else {
         resultsHTML = `
             <div class="results-card">
