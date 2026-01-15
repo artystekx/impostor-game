@@ -149,6 +149,15 @@ function initSocket() {
     
     socket.on('error', (data) => {
         showNotification(data.message, 'error');
+        
+        // Jeśli błąd dotyczy restartu gry i host nie istnieje, wróć do menu
+        if (data.message && (data.message.includes('host') || data.message.includes('Host') || data.message.includes('Tylko host'))) {
+            setTimeout(() => {
+                socket.disconnect();
+                initSocket();
+                switchScreen('start');
+            }, 2000);
+        }
     });
     
     socket.on('gameJoined', (data) => {
@@ -182,7 +191,9 @@ function initSocket() {
     
     socket.on('gameStarted', (data) => {
         gameState = data.gameState;
-        startGame();
+        showCountdown(() => {
+            startGame();
+        });
     });
     
     socket.on('associationSubmitted', (data) => {
@@ -326,10 +337,7 @@ function initSocket() {
                 showFinalResults('normal');
             }
             
-            // Pokaż przycisk powrotu na pełnym ekranie po 2 sekundach
-            setTimeout(() => {
-                document.getElementById('fullscreen-back-button').classList.add('active');
-            }, 2000);
+            // ✅ NAPRAWIONE: Nie pokazujemy fullscreen-back-button, tylko zostawiamy ekran z wynikami i przyciskami
         }, 1000);
     });
     
@@ -502,6 +510,77 @@ function updateGamePlayersList() {
 }
 
 // Rozpoczęcie gry
+function showCountdown(callback) {
+    // Pokaż ekran gry ale z odliczaniem
+    switchScreen('game');
+    
+    // Ukryj wszystkie sekcje gry
+    document.getElementById('association-section').style.display = 'none';
+    document.getElementById('waiting-section').style.display = 'none';
+    document.getElementById('voting-section').style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('decision-section').style.display = 'none';
+    document.getElementById('turn-section').style.display = 'none';
+    document.getElementById('word-guessed-section').style.display = 'none';
+    document.getElementById('host-controls').style.display = 'none';
+    
+    // Stwórz overlay z odliczaniem
+    let countdownOverlay = document.getElementById('countdown-overlay');
+    if (!countdownOverlay) {
+        countdownOverlay = document.createElement('div');
+        countdownOverlay.id = 'countdown-overlay';
+        countdownOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            flex-direction: column;
+        `;
+        document.body.appendChild(countdownOverlay);
+    }
+    
+    const countdownText = document.createElement('div');
+    countdownText.style.cssText = `
+        font-size: 8rem;
+        font-weight: bold;
+        color: #00ffcc;
+        text-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
+        animation: pulse 0.5s ease-in-out;
+    `;
+    countdownOverlay.innerHTML = '';
+    countdownOverlay.appendChild(countdownText);
+    countdownOverlay.style.display = 'flex';
+    
+    let count = 3;
+    countdownText.textContent = count;
+    
+    const countdownInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            countdownText.textContent = count;
+            countdownText.style.animation = 'none';
+            setTimeout(() => {
+                countdownText.style.animation = 'pulse 0.5s ease-in-out';
+            }, 10);
+        } else if (count === 0) {
+            countdownText.textContent = 'ZACZYNAMY!';
+            countdownText.style.fontSize = '5rem';
+            countdownText.style.color = '#00ff99';
+            setTimeout(() => {
+                countdownOverlay.style.display = 'none';
+                clearInterval(countdownInterval);
+                callback();
+            }, 1000);
+        }
+    }, 1000);
+}
+
 function startGame() {
     // ✅ NAPRAWIONE: Usunięto bezsensowne przypisanie gameState = gameState;
     currentRound = gameState.currentRound;
@@ -517,7 +596,6 @@ function startGame() {
         playerName = playerInfo.name;
     }
     
-    switchScreen('game');
     updateGameInterface();
     updateGamePlayersList();
     updateSidebarInfo();
@@ -1619,7 +1697,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isHost) {
             socket.emit('restartGame');
         } else {
-            showNotification('Poczekaj, aż host zrestartuje grę', 'info');
+            // ✅ NAPRAWIONE: Sprawdź czy host istnieje
+            if (!gameState || !gameState.players || !gameState.players.find(p => p.isHost)) {
+                showNotification('Host opuścił grę. Wracasz do menu głównego.', 'error');
+                setTimeout(() => {
+                    socket.disconnect();
+                    initSocket();
+                    switchScreen('start');
+                }, 2000);
+            } else {
+                showNotification('Host musi najpierw kliknąć "Zagraj ponownie". Poczekaj na hosta.', 'info');
+            }
         }
     });
     
