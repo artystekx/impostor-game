@@ -505,6 +505,21 @@
                     </div>
                 </div>
                 
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="decision-time">
+                            <i class="fas fa-hourglass-half"></i> Czas na głosowanie/decyzję:
+                        </label>
+                        <select id="decision-time">
+                            <option value="15">15 sekund</option>
+                            <option value="20">20 sekund</option>
+                            <option value="30" selected>30 sekund</option>
+                            <option value="45">45 sekund</option>
+                            <option value="60">60 sekund</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <div class="button-group">
                     <button id="advanced-options-btn" class="btn btn-secondary">
                         <i class="fas fa-sliders-h"></i> Opcje zaawansowane
@@ -810,12 +825,6 @@
                     </div>
                     <div id="chat-messages" class="chat-messages">
                         <!-- Wiadomości czatu będą dodawane dynamicznie -->
-                    </div>
-                    <div class="chat-input-container">
-                        <input type="text" id="chat-input" placeholder="Napisz wiadomość..." maxlength="200">
-                        <button id="send-chat-btn">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
                     </div>
                 </div>
             </div>
