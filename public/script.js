@@ -355,6 +355,9 @@ function initSocket() {
         votingTimerInterval = null;
         decisionTimerInterval = null;
         
+        // ✅ NAPRAWIONE: Zresetuj rolę gracza (zostanie zaktualizowana przy starcie nowej gry)
+        isImpostor = false;
+        
         // Zresetuj zmienne
         currentRound = 0;
         timeLeft = roundTime;
@@ -1769,4 +1772,5 @@ document.addEventListener('DOMContentLoaded', () => {
         roundTime = parseInt(this.value);
     });
 });
+
 
