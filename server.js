@@ -1327,8 +1327,82 @@ io.on('connection', (socket) => {
     
     game.nextRound(keepSameWord);
     
+    const gameState = game.getGameState();
+    
+    // ✅ NAPRAWIONE: Uruchom timer dla pierwszego gracza w trybie sequential po nowej rundzie
+    if (game.gameMode === 'sequential' && game.isPlaying) {
+      const firstPlayerId = game.getCurrentTurnPlayerId();
+      if (firstPlayerId) {
+        game.turnStartTime = Date.now();
+        game.turnTimeLeft = 30;
+        
+        // Wyślij początkowy czas natychmiast
+        io.to(gameCode).emit('turnTimerUpdate', {
+          timeLeft: game.turnTimeLeft,
+          gameState: gameState
+        });
+        
+        // Rozpocznij broadcast timera
+        game.turnTimerBroadcastInterval = setInterval(() => {
+          if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
+            const currentTurnPlayerId = game.getCurrentTurnPlayerId();
+            if (currentTurnPlayerId === firstPlayerId) {
+              const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
+              game.turnTimeLeft = Math.max(0, 30 - elapsed);
+              
+              io.to(gameCode).emit('turnTimerUpdate', {
+                timeLeft: game.turnTimeLeft,
+                gameState: game.getGameState()
+              });
+              
+              // Jeśli czas się skończył, automatycznie przejdź dalej
+              if (game.turnTimeLeft <= 0) {
+                clearInterval(game.turnTimerBroadcastInterval);
+                game.turnTimerBroadcastInterval = null;
+                
+                const currentPlayer = game.players.get(firstPlayerId);
+                if (currentPlayer && !currentPlayer.hasSubmitted) {
+                  game.submitAssociation(firstPlayerId, '');
+                  io.to(gameCode).emit('associationSubmitted', {
+                    playerId: firstPlayerId,
+                    association: '',
+                    gameState: game.getGameState()
+                  });
+                  
+                  // Przejdź do następnego gracza
+                  const nextPlayerId = game.nextTurn();
+                  if (nextPlayerId) {
+                    game.turnStartTime = Date.now();
+                    game.turnTimeLeft = 30;
+                    io.to(gameCode).emit('nextTurn', {
+                      nextPlayerId: nextPlayerId,
+                      gameState: game.getGameState()
+                    });
+                  } else {
+                    setTimeout(() => {
+                      game.startDecisionPhase();
+                      io.to(gameCode).emit('decisionPhaseStarted', {
+                        gameState: game.getGameState()
+                      });
+                    }, 1500);
+                  }
+                }
+              }
+            } else {
+              // Gracz się zmienił, zatrzymaj timer
+              clearInterval(game.turnTimerBroadcastInterval);
+              game.turnTimerBroadcastInterval = null;
+            }
+          } else {
+            clearInterval(game.turnTimerBroadcastInterval);
+            game.turnTimerBroadcastInterval = null;
+          }
+        }, 1000);
+      }
+    }
+    
     io.to(gameCode).emit('nextRoundStarted', {
-      gameState: game.getGameState()
+      gameState: gameState
     });
   });
   
@@ -1410,6 +1484,12 @@ io.on('connection', (socket) => {
     game.decisions.clear();
     game.guesses.clear();
     game.chatMessages = [];
+    
+    // ✅ NAPRAWIONE: Wyczyść customWordData i zawsze losuj nowe słowo przy restarcie
+    game.customWordData = null;
+    game.currentWordPair = game.getRandomWordPair();
+    game.word = game.currentWordPair.word;
+    game.hint = game.currentWordPair.hint;
     
     // Wyślij event do wszystkich graczy, żeby wrócili do lobby
     io.to(gameCode).emit('gameRestarted', {
@@ -1518,4 +1598,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
 });
-
