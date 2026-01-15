@@ -188,19 +188,7 @@ function initSocket() {
     socket.on('associationSubmitted', (data) => {
         gameState = data.gameState;
         
-        // Dodaj wiadomość do czatu dla trybu kolejka
-        if (gameState.gameMode === 'sequential' && data.playerId) {
-            const player = gameState.players.find(p => p.id === data.playerId);
-            if (player) {
-                addChatMessage({
-                    type: 'association',
-                    playerName: player.name,
-                    message: data.association || '(pominął)',
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    round: gameState.currentRound
-                });
-            }
-        }
+        // ✅ NAPRAWIONE: Usunięto duplikację - wiadomości są już dodawane przez newChatMessage z serwera
         
         if (isHost) {
             updateGamePlayersList();
@@ -238,6 +226,11 @@ function initSocket() {
         const turnTimerElement = document.getElementById('turn-timer');
         if (turnTimerElement) {
             turnTimerElement.textContent = timeLeft;
+            // Pokaż sekcję timera jeśli jest ukryta
+            const turnSection = document.getElementById('turn-section');
+            if (turnSection && gameState.gameMode === 'sequential' && gameState.isPlaying) {
+                turnSection.style.display = 'block';
+            }
         }
         
         // Zatrzymaj lokalny timer i użyj czasu z serwera
@@ -318,6 +311,17 @@ function initSocket() {
         setTimeout(() => {
             if (data.reason === 'wordGuessed' || data.reason === 'guessFailed' || data.reason === 'allImpostorsFound') {
                 showFinalResults(data.reason);
+            } else if (data.reason === 'notEnoughPlayers') {
+                showNotification('Gra zakończona - zbyt mało graczy (minimum 3)', 'error');
+                setTimeout(() => {
+                    if (isHost) {
+                        switchScreen('waitingHost');
+                        updatePlayersList();
+                    } else {
+                        switchScreen('waitingPlayer');
+                        updateWaitingPlayersList();
+                    }
+                }, 2000);
             } else {
                 showFinalResults('normal');
             }
