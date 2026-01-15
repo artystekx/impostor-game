@@ -948,7 +948,8 @@ io.on('connection', (socket) => {
         game.turnTimerBroadcastInterval = setInterval(() => {
           if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
             const currentTurnPlayerId = game.getCurrentTurnPlayerId();
-            if (currentTurnPlayerId === firstPlayerId) {
+            // ✅ NAPRAWIONE: Sprawdzaj aktualnego gracza, nie tylko pierwszego
+            if (currentTurnPlayerId) {
               const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
               game.turnTimeLeft = Math.max(0, 30 - elapsed);
               
@@ -962,11 +963,11 @@ io.on('connection', (socket) => {
                 clearInterval(game.turnTimerBroadcastInterval);
                 game.turnTimerBroadcastInterval = null;
                 
-                const currentPlayer = game.players.get(firstPlayerId);
+                const currentPlayer = game.players.get(currentTurnPlayerId);
                 if (currentPlayer && !currentPlayer.hasSubmitted) {
-                  game.submitAssociation(firstPlayerId, '');
+                  game.submitAssociation(currentTurnPlayerId, '');
                   io.to(gameCode).emit('associationSubmitted', {
-                    playerId: firstPlayerId,
+                    playerId: currentTurnPlayerId,
                     association: '',
                     gameState: game.getGameState()
                   });
@@ -976,6 +977,13 @@ io.on('connection', (socket) => {
                   if (nextPlayerId) {
                     game.turnStartTime = Date.now();
                     game.turnTimeLeft = 30;
+                    
+                    // Wyślij początkowy czas dla nowego gracza
+                    io.to(gameCode).emit('turnTimerUpdate', {
+                      timeLeft: game.turnTimeLeft,
+                      gameState: game.getGameState()
+                    });
+                    
                     io.to(gameCode).emit('nextTurn', {
                       nextPlayerId: nextPlayerId,
                       gameState: game.getGameState()
@@ -991,7 +999,7 @@ io.on('connection', (socket) => {
                 }
               }
             } else {
-              // Gracz się zmienił, zatrzymaj timer
+              // Brak gracza w kolejce, zatrzymaj timer
               clearInterval(game.turnTimerBroadcastInterval);
               game.turnTimerBroadcastInterval = null;
             }
@@ -1066,10 +1074,17 @@ io.on('connection', (socket) => {
           gameState: game.getGameState()
         });
         
-        // Rozpocznij broadcast timera
+        // ✅ NAPRAWIONE: Zatrzymaj poprzedni timer przed uruchomieniem nowego
+        if (game.turnTimerBroadcastInterval) {
+          clearInterval(game.turnTimerBroadcastInterval);
+          game.turnTimerBroadcastInterval = null;
+        }
+        
+        // Rozpocznij broadcast timera dla nowego gracza
         game.turnTimerBroadcastInterval = setInterval(() => {
           if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
             const currentTurnPlayerId = game.getCurrentTurnPlayerId();
+            // ✅ NAPRAWIONE: Sprawdzaj aktualnego gracza
             if (currentTurnPlayerId === nextPlayerId) {
               const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
               game.turnTimeLeft = Math.max(0, 30 - elapsed);
@@ -1098,6 +1113,13 @@ io.on('connection', (socket) => {
                   if (nextNextPlayerId) {
                     game.turnStartTime = Date.now();
                     game.turnTimeLeft = 30;
+                    
+                    // Wyślij początkowy czas dla nowego gracza
+                    io.to(gameCode).emit('turnTimerUpdate', {
+                      timeLeft: game.turnTimeLeft,
+                      gameState: game.getGameState()
+                    });
+                    
                     io.to(gameCode).emit('nextTurn', {
                       nextPlayerId: nextNextPlayerId,
                       gameState: game.getGameState()
@@ -1333,6 +1355,12 @@ io.on('connection', (socket) => {
     if (game.gameMode === 'sequential' && game.isPlaying) {
       const firstPlayerId = game.getCurrentTurnPlayerId();
       if (firstPlayerId) {
+        // ✅ NAPRAWIONE: Zresetuj timer przed uruchomieniem nowego
+        if (game.turnTimerBroadcastInterval) {
+          clearInterval(game.turnTimerBroadcastInterval);
+          game.turnTimerBroadcastInterval = null;
+        }
+        
         game.turnStartTime = Date.now();
         game.turnTimeLeft = 30;
         
@@ -1346,7 +1374,8 @@ io.on('connection', (socket) => {
         game.turnTimerBroadcastInterval = setInterval(() => {
           if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
             const currentTurnPlayerId = game.getCurrentTurnPlayerId();
-            if (currentTurnPlayerId === firstPlayerId) {
+            // ✅ NAPRAWIONE: Sprawdzaj aktualnego gracza, nie tylko pierwszego
+            if (currentTurnPlayerId) {
               const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
               game.turnTimeLeft = Math.max(0, 30 - elapsed);
               
@@ -1360,11 +1389,11 @@ io.on('connection', (socket) => {
                 clearInterval(game.turnTimerBroadcastInterval);
                 game.turnTimerBroadcastInterval = null;
                 
-                const currentPlayer = game.players.get(firstPlayerId);
+                const currentPlayer = game.players.get(currentTurnPlayerId);
                 if (currentPlayer && !currentPlayer.hasSubmitted) {
-                  game.submitAssociation(firstPlayerId, '');
+                  game.submitAssociation(currentTurnPlayerId, '');
                   io.to(gameCode).emit('associationSubmitted', {
-                    playerId: firstPlayerId,
+                    playerId: currentTurnPlayerId,
                     association: '',
                     gameState: game.getGameState()
                   });
@@ -1374,6 +1403,13 @@ io.on('connection', (socket) => {
                   if (nextPlayerId) {
                     game.turnStartTime = Date.now();
                     game.turnTimeLeft = 30;
+                    
+                    // Wyślij początkowy czas dla nowego gracza
+                    io.to(gameCode).emit('turnTimerUpdate', {
+                      timeLeft: game.turnTimeLeft,
+                      gameState: game.getGameState()
+                    });
+                    
                     io.to(gameCode).emit('nextTurn', {
                       nextPlayerId: nextPlayerId,
                       gameState: game.getGameState()
@@ -1389,7 +1425,7 @@ io.on('connection', (socket) => {
                 }
               }
             } else {
-              // Gracz się zmienił, zatrzymaj timer
+              // Brak gracza w kolejce, zatrzymaj timer
               clearInterval(game.turnTimerBroadcastInterval);
               game.turnTimerBroadcastInterval = null;
             }
@@ -1466,8 +1502,13 @@ io.on('connection', (socket) => {
     game.guessFailed = false;
     game.currentRound = 0;
     
-    // Resetuj stan wszystkich graczy
-    for (const player of game.players.values()) {
+    // ✅ NAPRAWIONE: Losuj nowych impostorów przy restarcie
+    game.impostorIds = [];
+    const allPlayers = Array.from(game.players.values());
+    
+    // Zresetuj role wszystkich graczy
+    for (const player of allPlayers) {
+      player.isImpostor = false;
       player.hasSubmitted = false;
       player.association = '';
       player.hasDecided = false;
@@ -1476,6 +1517,21 @@ io.on('connection', (socket) => {
       player.turnCompleted = false;
       player.voteSubmitted = false;
     }
+    
+    // Losowo wybierz nowych impostorów spośród WSZYSTKICH graczy (w tym hosta)
+    const shuffled = [...allPlayers].sort(() => 0.5 - Math.random());
+    const impostorCount = Math.min(game.numImpostors, allPlayers.length);
+    
+    for (let i = 0; i < impostorCount; i++) {
+      const impostorId = shuffled[i].id;
+      game.impostorIds.push(impostorId);
+      const player = game.players.get(impostorId);
+      if (player) {
+        player.isImpostor = true;
+      }
+    }
+    
+    console.log(`Game ${gameCode}: Restart - New impostors assigned: ${game.impostorIds.join(', ')}`);
     
     // Wyczyść wszystkie dane rundy
     game.associations.clear();
@@ -1598,3 +1654,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
 });
+
