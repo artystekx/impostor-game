@@ -121,18 +121,30 @@ function initSocket() {
     });
     
     socket.on('gameCreated', (data) => {
-        gameCode = data.code;
-        gameState = data.gameState;
-        
-        document.getElementById('code-text').textContent = gameCode;
-        document.getElementById('waiting-game-mode').textContent = data.gameState.gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy jednocześnie';
-        document.getElementById('waiting-impostors').textContent = data.gameState.numImpostors;
-        document.getElementById('waiting-rounds').textContent = data.gameState.rounds;
-        document.getElementById('waiting-time').textContent = data.gameState.roundTime;
-        
-        isHost = true;
-        switchScreen('waitingHost');
-        updatePlayersList();
+        console.log('Otrzymano gameCreated:', data);
+        try {
+            gameCode = data.code;
+            gameState = data.gameState;
+            
+            const codeText = document.getElementById('code-text');
+            const waitingGameMode = document.getElementById('waiting-game-mode');
+            const waitingImpostors = document.getElementById('waiting-impostors');
+            const waitingRounds = document.getElementById('waiting-rounds');
+            const waitingTime = document.getElementById('waiting-time');
+            
+            if (codeText) codeText.textContent = gameCode;
+            if (waitingGameMode) waitingGameMode.textContent = data.gameState.gameMode === 'sequential' ? 'Kolejka' : 'Wszyscy jednocześnie';
+            if (waitingImpostors) waitingImpostors.textContent = data.gameState.numImpostors;
+            if (waitingRounds) waitingRounds.textContent = data.gameState.rounds;
+            if (waitingTime) waitingTime.textContent = data.gameState.roundTime;
+            
+            isHost = true;
+            switchScreen('waitingHost');
+            updatePlayersList();
+        } catch (error) {
+            console.error('Błąd przy przetwarzaniu gameCreated:', error);
+            showNotification('Błąd przy tworzeniu gry. Sprawdź konsolę.', 'error');
+        }
     });
     
     socket.on('error', (data) => {
@@ -1317,43 +1329,74 @@ function loadWordsTable() {
 
 // Obsługa przycisków
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM załadowany, inicjalizacja...');
     initSocket();
     
     // Ekran startowy
-    document.getElementById('create-game-btn').addEventListener('click', () => {
-        switchScreen('create');
-    });
+    const createGameBtn = document.getElementById('create-game-btn');
+    if (createGameBtn) {
+        createGameBtn.addEventListener('click', () => {
+            switchScreen('create');
+        });
+    } else {
+        console.error('Nie znaleziono przycisku create-game-btn');
+    }
     
-    document.getElementById('join-game-btn').addEventListener('click', () => {
-        switchScreen('join');
-    });
+    const joinGameBtn = document.getElementById('join-game-btn');
+    if (joinGameBtn) {
+        joinGameBtn.addEventListener('click', () => {
+            switchScreen('join');
+        });
+    } else {
+        console.error('Nie znaleziono przycisku join-game-btn');
+    }
     
     // Ekran tworzenia gry
-    document.getElementById('create-game-final-btn').addEventListener('click', () => {
-        const playerName = document.getElementById('player-name-host').value.trim();
-        const rounds = document.getElementById('rounds-count').value;
-        const roundTime = document.getElementById('round-time').value;
-        const numImpostors = document.getElementById('num-impostors').value;
-        const gameMode = document.getElementById('game-mode').value;
-        const decisionTime = document.getElementById('decision-time').value;
-        
-        if (!playerName) {
-            showNotification('Wpisz swój pseudonim!', 'error');
-            return;
+    const createGameFinalBtn = document.getElementById('create-game-final-btn');
+    if (!createGameFinalBtn) {
+        console.error('Nie znaleziono przycisku create-game-final-btn');
+        return;
+    }
+    
+    createGameFinalBtn.addEventListener('click', () => {
+        try {
+            const playerName = document.getElementById('player-name-host').value.trim();
+            const rounds = document.getElementById('rounds-count').value;
+            const roundTime = document.getElementById('round-time').value;
+            const numImpostors = document.getElementById('num-impostors').value;
+            const gameMode = document.getElementById('game-mode').value;
+            const decisionTimeElement = document.getElementById('decision-time');
+            const decisionTime = decisionTimeElement ? decisionTimeElement.value : '30';
+            
+            if (!playerName) {
+                showNotification('Wpisz swój pseudonim!', 'error');
+                return;
+            }
+            
+            if (!socket || !socket.connected) {
+                showNotification('Brak połączenia z serwerem. Spróbuj odświeżyć stronę.', 'error');
+                console.error('Socket nie jest połączony');
+                return;
+            }
+            
+            console.log('Tworzenie gry:', { playerName, rounds, roundTime, numImpostors, gameMode, decisionTime });
+            
+            socket.emit('createGame', {
+                playerName,
+                rounds,
+                roundTime,
+                numImpostors,
+                gameMode,
+                decisionTime,
+                customWordData: selectedWordForGame
+            });
+            
+            // Zresetuj wybrane słowo
+            selectedWordForGame = null;
+        } catch (error) {
+            console.error('Błąd przy tworzeniu gry:', error);
+            showNotification('Wystąpił błąd przy tworzeniu gry. Sprawdź konsolę.', 'error');
         }
-        
-        socket.emit('createGame', {
-            playerName,
-            rounds,
-            roundTime,
-            numImpostors,
-            gameMode,
-            decisionTime,
-            customWordData: selectedWordForGame
-        });
-        
-        // Zresetuj wybrane słowo
-        selectedWordForGame = null;
     });
     
     document.getElementById('back-to-start-from-create').addEventListener('click', () => {
