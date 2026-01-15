@@ -101,6 +101,8 @@ class Game {
     this.gameEnded = false;
     this.turnTimeLeft = 30;
     this.turnTimerInterval = null;
+    this.turnStartTime = null;
+    this.turnTimerBroadcastInterval = null;
   }
 
   getRandomWordPair() {
@@ -257,6 +259,12 @@ class Game {
     
     if (this.gameMode === 'sequential') {
       this.prepareTurnOrder();
+      // Uruchom timer dla pierwszego gracza
+      const firstPlayerId = this.getCurrentTurnPlayerId();
+      if (firstPlayerId) {
+        this.turnStartTime = Date.now();
+        this.turnTimeLeft = 30;
+      }
     }
     
     return this.getGameState();
@@ -361,6 +369,12 @@ class Game {
     this.isDeciding = true;
     this.isVoting = false;
     this.decisions.clear();
+    
+    // Zatrzymaj timer tury jeśli działa
+    if (this.turnTimerBroadcastInterval) {
+      clearInterval(this.turnTimerBroadcastInterval);
+      this.turnTimerBroadcastInterval = null;
+    }
     
     for (const player of this.players.values()) {
       player.hasDecided = false;
@@ -696,6 +710,12 @@ class Game {
       this.decisionTimeout = null;
     }
     
+    // Zatrzymaj timer tury jeśli działa
+    if (this.turnTimerBroadcastInterval) {
+      clearInterval(this.turnTimerBroadcastInterval);
+      this.turnTimerBroadcastInterval = null;
+    }
+    
     return this.getGameState();
   }
 
@@ -911,6 +931,72 @@ io.on('connection', (socket) => {
     
     game.startGame();
     
+    // Uruchom timer dla pierwszego gracza w trybie sequential
+    if (game.gameMode === 'sequential') {
+      const firstPlayerId = game.getCurrentTurnPlayerId();
+      if (firstPlayerId) {
+        game.turnStartTime = Date.now();
+        game.turnTimeLeft = 30;
+        
+        // Rozpocznij broadcast timera
+        game.turnTimerBroadcastInterval = setInterval(() => {
+          if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
+            const currentTurnPlayerId = game.getCurrentTurnPlayerId();
+            if (currentTurnPlayerId === firstPlayerId) {
+              const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
+              game.turnTimeLeft = Math.max(0, 30 - elapsed);
+              
+              io.to(gameCode).emit('turnTimerUpdate', {
+                timeLeft: game.turnTimeLeft,
+                gameState: game.getGameState()
+              });
+              
+              // Jeśli czas się skończył, automatycznie przejdź dalej
+              if (game.turnTimeLeft <= 0) {
+                clearInterval(game.turnTimerBroadcastInterval);
+                game.turnTimerBroadcastInterval = null;
+                
+                const currentPlayer = game.players.get(firstPlayerId);
+                if (currentPlayer && !currentPlayer.hasSubmitted) {
+                  game.submitAssociation(firstPlayerId, '');
+                  io.to(gameCode).emit('associationSubmitted', {
+                    playerId: firstPlayerId,
+                    association: '',
+                    gameState: game.getGameState()
+                  });
+                  
+                  // Przejdź do następnego gracza
+                  const nextPlayerId = game.nextTurn();
+                  if (nextPlayerId) {
+                    game.turnStartTime = Date.now();
+                    game.turnTimeLeft = 30;
+                    io.to(gameCode).emit('nextTurn', {
+                      nextPlayerId: nextPlayerId,
+                      gameState: game.getGameState()
+                    });
+                  } else {
+                    setTimeout(() => {
+                      game.startDecisionPhase();
+                      io.to(gameCode).emit('decisionPhaseStarted', {
+                        gameState: game.getGameState()
+                      });
+                    }, 1500);
+                  }
+                }
+              }
+            } else {
+              // Gracz się zmienił, zatrzymaj timer
+              clearInterval(game.turnTimerBroadcastInterval);
+              game.turnTimerBroadcastInterval = null;
+            }
+          } else {
+            clearInterval(game.turnTimerBroadcastInterval);
+            game.turnTimerBroadcastInterval = null;
+          }
+        }, 1000);
+      }
+    }
+    
     io.to(gameCode).emit('gameStarted', {
       gameState: game.getGameState()
     });
@@ -937,16 +1023,14 @@ io.on('connection', (socket) => {
     
     const allSubmitted = game.submitAssociation(socket.id, association);
     
-    // Dodaj wiadomość do czatu dla trybu kolejka
-    if (game.gameMode === 'sequential') {
-      const player = game.players.get(socket.id);
-      if (player) {
-        const chatMessage = game.addChatMessage(socket.id, association || '(pominął)', 'association');
-        io.to(gameCode).emit('newChatMessage', {
-          chatMessage,
-          gameState: game.getGameState()
-        });
-      }
+    // ✅ NAPRAWIONE: Dodaj wiadomość do czatu dla wszystkich trybów
+    const player = game.players.get(socket.id);
+    if (player) {
+      const chatMessage = game.addChatMessage(socket.id, association || '(pominął)', 'association');
+      io.to(gameCode).emit('newChatMessage', {
+        chatMessage,
+        gameState: game.getGameState()
+      });
     }
     
     // Wyślij zaktualizowany stan gry do wszystkich
@@ -960,11 +1044,90 @@ io.on('connection', (socket) => {
     if (game.gameMode === 'sequential') {
       const nextPlayerId = game.nextTurn();
       if (nextPlayerId) {
+        // Zatrzymaj poprzedni timer
+        if (game.turnTimerBroadcastInterval) {
+          clearInterval(game.turnTimerBroadcastInterval);
+          game.turnTimerBroadcastInterval = null;
+        }
+        
+        // Uruchom nowy timer dla następnego gracza
+        game.turnStartTime = Date.now();
+        game.turnTimeLeft = 30;
+        
+        // Wyślij początkowy czas
+        io.to(gameCode).emit('turnTimerUpdate', {
+          timeLeft: game.turnTimeLeft,
+          gameState: game.getGameState()
+        });
+        
+        // Rozpocznij broadcast timera
+        game.turnTimerBroadcastInterval = setInterval(() => {
+          if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
+            const currentTurnPlayerId = game.getCurrentTurnPlayerId();
+            if (currentTurnPlayerId === nextPlayerId) {
+              const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
+              game.turnTimeLeft = Math.max(0, 30 - elapsed);
+              
+              io.to(gameCode).emit('turnTimerUpdate', {
+                timeLeft: game.turnTimeLeft,
+                gameState: game.getGameState()
+              });
+              
+              // Jeśli czas się skończył, automatycznie przejdź dalej
+              if (game.turnTimeLeft <= 0) {
+                clearInterval(game.turnTimerBroadcastInterval);
+                game.turnTimerBroadcastInterval = null;
+                
+                const currentPlayer = game.players.get(nextPlayerId);
+                if (currentPlayer && !currentPlayer.hasSubmitted) {
+                  game.submitAssociation(nextPlayerId, '');
+                  io.to(gameCode).emit('associationSubmitted', {
+                    playerId: nextPlayerId,
+                    association: '',
+                    gameState: game.getGameState()
+                  });
+                  
+                  // Przejdź do następnego gracza
+                  const nextNextPlayerId = game.nextTurn();
+                  if (nextNextPlayerId) {
+                    game.turnStartTime = Date.now();
+                    game.turnTimeLeft = 30;
+                    io.to(gameCode).emit('nextTurn', {
+                      nextPlayerId: nextNextPlayerId,
+                      gameState: game.getGameState()
+                    });
+                  } else {
+                    setTimeout(() => {
+                      game.startDecisionPhase();
+                      io.to(gameCode).emit('decisionPhaseStarted', {
+                        gameState: game.getGameState()
+                      });
+                    }, 1500);
+                  }
+                }
+              }
+            } else {
+              // Gracz się zmienił, zatrzymaj timer
+              clearInterval(game.turnTimerBroadcastInterval);
+              game.turnTimerBroadcastInterval = null;
+            }
+          } else {
+            clearInterval(game.turnTimerBroadcastInterval);
+            game.turnTimerBroadcastInterval = null;
+          }
+        }, 1000);
+        
         io.to(gameCode).emit('nextTurn', {
           nextPlayerId: nextPlayerId,
           gameState: game.getGameState()
         });
       } else {
+        // Zatrzymaj timer
+        if (game.turnTimerBroadcastInterval) {
+          clearInterval(game.turnTimerBroadcastInterval);
+          game.turnTimerBroadcastInterval = null;
+        }
+        
         // Wszyscy gracze zakończyli tury
         setTimeout(() => {
           game.startDecisionPhase();
@@ -1187,11 +1350,52 @@ io.on('connection', (socket) => {
     
     if (socket.id !== game.hostId) return;
     
-    // Usuń starą grę
-    games.delete(gameCode);
+    // Zatrzymaj wszystkie timery
+    if (game.turnTimerBroadcastInterval) {
+      clearInterval(game.turnTimerBroadcastInterval);
+      game.turnTimerBroadcastInterval = null;
+    }
+    if (game.votingTimeout) {
+      clearTimeout(game.votingTimeout);
+      game.votingTimeout = null;
+    }
+    if (game.decisionTimeout) {
+      clearTimeout(game.decisionTimeout);
+      game.decisionTimeout = null;
+    }
     
-    // Przeładuj stronę dla wszystkich graczy
-    io.to(gameCode).emit('forceReload');
+    // Resetuj stan gry
+    game.isPlaying = false;
+    game.isVoting = false;
+    game.isDeciding = false;
+    game.gameEnded = false;
+    game.wordGuessed = false;
+    game.guessFailed = false;
+    game.currentRound = 0;
+    
+    // Resetuj stan wszystkich graczy
+    for (const player of game.players.values()) {
+      player.hasSubmitted = false;
+      player.association = '';
+      player.hasDecided = false;
+      player.hasGuessed = false;
+      player.guess = '';
+      player.turnCompleted = false;
+      player.voteSubmitted = false;
+    }
+    
+    // Wyczyść wszystkie dane rundy
+    game.associations.clear();
+    game.votes.clear();
+    game.voteResults.clear();
+    game.decisions.clear();
+    game.guesses.clear();
+    game.chatMessages = [];
+    
+    // Wyślij event do wszystkich graczy, żeby wrócili do lobby
+    io.to(gameCode).emit('gameRestarted', {
+      gameState: game.getGameState()
+    });
     
     console.log(`Gra zrestartowana: ${gameCode}`);
   });
