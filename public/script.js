@@ -1239,6 +1239,16 @@ function showFinalResults(reason) {
                 <p style="font-size: 1.5rem; color: #00ff99; margin: 30px 0;">
                     Wszyscy impostorzy zostali wykryci!
                 </p>
+                
+                <div class="impostor-reveal" style="margin-top: 30px;">
+                    <h4 style="color: #00ffcc; font-size: 1.5rem; margin-bottom: 20px;">PRAWDZIWI IMPOSTORZY:</h4>
+                    ${gameState.impostorIds && gameState.impostorIds.length > 0 ? gameState.impostorIds.map(impostorId => {
+                        const impostor = gameState.players.find(p => p.id === impostorId);
+                        return impostor ? `<p style="font-size: 1.8rem; font-weight: bold; color: #ff3366; margin: 10px 0;">
+                            ${impostor.name}
+                        </p>` : '';
+                    }).join('') : '<p style="color: #888; font-style: italic;">Brak impostorów do wyświetlenia</p>'}
+                </div>
         `;
     } else {
         resultsHTML = `
