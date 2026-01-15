@@ -179,8 +179,8 @@ class Game {
       }
     }
     
-    // ✅ NAPRAWIONE: Sprawdź minimalną liczbę graczy
-    if (this.isPlaying && this.players.size < 2) {
+    // ✅ NAPRAWIONE: Sprawdź minimalną liczbę graczy (minimum 3 do gry)
+    if (this.isPlaying && this.players.size < 3) {
       this.isPlaying = false;
       this.gameEnded = true;
     }
@@ -938,6 +938,12 @@ io.on('connection', (socket) => {
         game.turnStartTime = Date.now();
         game.turnTimeLeft = 30;
         
+        // Wyślij początkowy czas natychmiast
+        io.to(gameCode).emit('turnTimerUpdate', {
+          timeLeft: game.turnTimeLeft,
+          gameState: game.getGameState()
+        });
+        
         // Rozpocznij broadcast timera
         game.turnTimerBroadcastInterval = setInterval(() => {
           if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
@@ -1475,11 +1481,19 @@ io.on('connection', (socket) => {
           }
         }, 500);
       } else {
-        // Zwykłe powiadomienie o opuszczeniu gracza
-        io.to(gameCode).emit('playerLeft', {
-          playerId: socket.id,
-          gameState: game.getGameState()
-        });
+        // Sprawdź czy gra się zakończyła z powodu zbyt małej liczby graczy
+        if (game.gameEnded && game.players.size < 3) {
+          io.to(gameCode).emit('gameEnded', {
+            reason: 'notEnoughPlayers',
+            gameState: game.getGameState()
+          });
+        } else {
+          // Zwykłe powiadomienie o opuszczeniu gracza
+          io.to(gameCode).emit('playerLeft', {
+            playerId: socket.id,
+            gameState: game.getGameState()
+          });
+        }
       }
       
       console.log(`Gracz wyszedł: ${socket.id} z gry ${gameCode}`);
