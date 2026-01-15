@@ -230,6 +230,25 @@ function initSocket() {
         showNextTurn(data.nextPlayerId);
     });
     
+    socket.on('turnTimerUpdate', (data) => {
+        gameState = data.gameState;
+        const timeLeft = data.timeLeft;
+        
+        // Aktualizuj timer dla wszystkich graczy
+        const turnTimerElement = document.getElementById('turn-timer');
+        if (turnTimerElement) {
+            turnTimerElement.textContent = timeLeft;
+        }
+        
+        // Zatrzymaj lokalny timer i użyj czasu z serwera
+        if (turnTimerInterval) {
+            clearInterval(turnTimerInterval);
+            turnTimerInterval = null;
+        }
+        
+        turnTimeLeft = timeLeft;
+    });
+    
     socket.on('decisionPhaseStarted', (data) => {
         gameState = data.gameState;
         showDecisionPhase();
@@ -312,6 +331,27 @@ function initSocket() {
     
     socket.on('gameRestarted', (data) => {
         gameState = data.gameState;
+        
+        // Zatrzymaj wszystkie timery
+        if (timerInterval) clearInterval(timerInterval);
+        if (turnTimerInterval) clearInterval(turnTimerInterval);
+        if (votingTimerInterval) clearInterval(votingTimerInterval);
+        if (decisionTimerInterval) clearInterval(decisionTimerInterval);
+        
+        timerInterval = null;
+        turnTimerInterval = null;
+        votingTimerInterval = null;
+        decisionTimerInterval = null;
+        
+        // Zresetuj zmienne
+        currentRound = 0;
+        timeLeft = roundTime;
+        turnTimeLeft = 30;
+        votingTimeLeft = decisionTime;
+        decisionTimeLeft = decisionTime;
+        
+        // Pokaż powiadomienie
+        showNotification('Gra została zrestartowana. Wracasz do lobby.', 'info');
         
         if (isHost) {
             switchScreen('waitingHost');
@@ -667,27 +707,12 @@ function startTimer() {
 }
 
 function startTurnTimer() {
+    // ✅ NAPRAWIONE: Timer jest teraz synchronizowany przez serwer
+    // Nie uruchamiamy lokalnego timera, tylko czekamy na aktualizacje z serwera
     if (turnTimerInterval) clearInterval(turnTimerInterval);
+    turnTimerInterval = null;
     
-    turnTimeLeft = 30;
-    document.getElementById('turn-timer').textContent = turnTimeLeft;
-    
-    turnTimerInterval = setInterval(() => {
-        turnTimeLeft--;
-        document.getElementById('turn-timer').textContent = turnTimeLeft;
-        
-        if (turnTimeLeft <= 0 && autoSubmitEnabled) {
-            clearInterval(turnTimerInterval);
-            // Automatycznie przejdź do następnego gracza
-            if (gameState.isPlaying && !gameState.wordGuessed && !gameState.guessFailed && gameState.gameMode === 'sequential') {
-                const player = gameState.players.find(p => p.id === socket.id);
-                if (player && !player.hasSubmitted) {
-                    socket.emit('submitAssociation', { association: '' });
-                    showNotification('Czas minął! Automatycznie wysłano puste skojarzenie.', 'warning');
-                }
-            }
-        }
-    }, 1000);
+    // Timer będzie aktualizowany przez turnTimerUpdate z serwera
 }
 
 function startVotingTimer() {
@@ -1642,3 +1667,4 @@ document.addEventListener('DOMContentLoaded', () => {
         roundTime = parseInt(this.value);
     });
 });
+
