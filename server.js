@@ -57,11 +57,12 @@ const wordPairs = [
 const games = new Map();
 
 class Game {
-  constructor(code, hostId, rounds, roundTime, numImpostors, gameMode, customWordData = null) {
+  constructor(code, hostId, rounds, roundTime, numImpostors, gameMode, customWordData = null, decisionTime = 30) {
     this.code = code;
     this.hostId = hostId;
     this.rounds = parseInt(rounds);
     this.roundTime = parseInt(roundTime);
+    this.decisionTime = parseInt(decisionTime) || 30;
     this.numImpostors = parseInt(numImpostors) || 1;
     this.gameMode = gameMode || 'simultaneous';
     this.players = new Map();
@@ -81,6 +82,7 @@ class Game {
     this.turnOrder = [];
     this.turnTimer = null;
     this.votingTimeout = null;
+    this.decisionTimeout = null;
     this.chatMessages = [];
     this.customWordData = customWordData;
     
@@ -364,6 +366,45 @@ class Game {
       player.hasDecided = false;
     }
     
+    // Wyczyść poprzedni timeout jeśli istnieje
+    if (this.decisionTimeout) {
+      clearTimeout(this.decisionTimeout);
+    }
+    
+    // Ustaw timeout dla fazy decyzji
+    this.decisionTimeout = setTimeout(() => {
+      if (this.isDeciding && this.isPlaying) {
+        console.log(`Game ${this.code}: Decision timeout - forcing decision calculation`);
+        
+        // Automatycznie dodaj decyzje dla graczy którzy nie zdecydowali
+        for (const player of this.players.values()) {
+          if (!player.hasDecided) {
+            // Domyślnie głosuj na kontynuację (false)
+            player.hasDecided = true;
+            this.decisions.set(player.id, false);
+          }
+        }
+        
+        const decisionResult = this.calculateDecisionResult();
+        
+        // Powiadom wszystkich graczy i przetwórz wynik
+        setTimeout(() => {
+          if (decisionResult.majorityWantsVote) {
+            this.startVoting();
+            io.to(this.code).emit('votingStarted', {
+              decisionResult,
+              gameState: this.getGameState()
+            });
+          } else {
+            this.nextRound(true);
+            io.to(this.code).emit('nextRoundStarted', {
+              gameState: this.getGameState()
+            });
+          }
+        }, 500);
+      }
+    }, this.decisionTime * 1000);
+    
     return this.getGameState();
   }
 
@@ -396,7 +437,11 @@ class Game {
       }
     }
     
-    const majorityWantsVote = voteCount > continueCount;
+    // Jeśli remis - losuj
+    let majorityWantsVote = voteCount > continueCount;
+    if (voteCount === continueCount) {
+      majorityWantsVote = Math.random() < 0.5;
+    }
     
     return {
       voteCount,
@@ -419,9 +464,28 @@ class Game {
       clearTimeout(this.votingTimeout);
     }
     
+    // Użyj tego samego czasu co dla decyzji
     this.votingTimeout = setTimeout(() => {
       if (this.isVoting && this.isPlaying) {
         console.log(`Game ${this.code}: Voting timeout - forcing vote calculation`);
+        
+        // Automatycznie dodaj głosy dla graczy którzy nie zagłosowali (losowy głos)
+        for (const player of this.players.values()) {
+          if (!player.voteSubmitted) {
+            // Losuj gracza na którego zagłosować (nie można głosować na siebie)
+            const availablePlayers = Array.from(this.players.values())
+              .filter(p => p.id !== player.id)
+              .map(p => p.id);
+            
+            if (availablePlayers.length > 0) {
+              const randomPlayerId = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
+              player.voteSubmitted = true;
+              this.votes.set(player.id, randomPlayerId);
+              console.log(`Game ${this.code}: Auto-vote for ${player.name} -> ${this.players.get(randomPlayerId)?.name}`);
+            }
+          }
+        }
+        
         const voteResults = this.calculateVoteResults();
         // ✅ NAPRAWIONE: Zapisz wynik tylko raz (było wywołane 2 razy)
         const outcome = this.handleVoteResults(voteResults);
@@ -443,7 +507,7 @@ class Game {
           }, 3000);
         }
       }
-    }, 30000);
+    }, this.decisionTime * 1000);
     
     return this.getGameState();
   }
@@ -505,7 +569,14 @@ class Game {
     
     this.voteResults = voteCounts;
     
-    // Jeśli remis (więcej niż 1 gracz z max głosami) lub brak głosów
+    // Jeśli remis (więcej niż 1 gracz z max głosami) - losuj
+    if (votedOutIds.length > 1 && maxVotes > 0) {
+      const randomIndex = Math.floor(Math.random() * votedOutIds.length);
+      votedOutIds = [votedOutIds[randomIndex]];
+      console.log(`Game ${this.code}: Vote tie - random choice: ${votedOutIds[0]}`);
+    }
+    
+    // Jeśli brak głosów lub remis z 0 głosami
     if (votedOutIds.length !== 1) {
       return {
         votedOutIds: [],
@@ -620,6 +691,11 @@ class Game {
       this.votingTimeout = null;
     }
     
+    if (this.decisionTimeout) {
+      clearTimeout(this.decisionTimeout);
+      this.decisionTimeout = null;
+    }
+    
     return this.getGameState();
   }
 
@@ -677,6 +753,7 @@ class Game {
       hint: this.hint,
       rounds: this.rounds,
       roundTime: this.roundTime,
+      decisionTime: this.decisionTime,
       numImpostors: this.numImpostors,
       gameMode: this.gameMode,
       currentRound: this.currentRound,
@@ -755,14 +832,14 @@ io.on('connection', (socket) => {
   console.log('Nowe połączenie:', socket.id);
   
   socket.on('createGame', (data) => {
-    const { playerName, rounds, roundTime, numImpostors, gameMode, customWordData } = data;
+    const { playerName, rounds, roundTime, numImpostors, gameMode, customWordData, decisionTime } = data;
     
     let code;
     do {
       code = generateGameCode();
     } while (games.has(code));
     
-    const game = new Game(code, socket.id, rounds, roundTime, numImpostors, gameMode, customWordData);
+    const game = new Game(code, socket.id, rounds, roundTime, numImpostors, gameMode, customWordData, decisionTime);
     games.set(code, game);
     
     game.addPlayer(socket.id, playerName || 'Host');
@@ -975,6 +1052,11 @@ io.on('connection', (socket) => {
     });
     
     if (decisionResult) {
+      if (game.decisionTimeout) {
+        clearTimeout(game.decisionTimeout);
+        game.decisionTimeout = null;
+      }
+      
       setTimeout(() => {
         if (decisionResult.majorityWantsVote) {
           game.startVoting();
@@ -1196,3 +1278,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
 });
+
