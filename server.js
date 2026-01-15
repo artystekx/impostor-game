@@ -126,15 +126,79 @@ class Game {
 
   removePlayer(playerId) {
     const wasImpostor = this.players.get(playerId)?.isImpostor;
+    const wasHost = playerId === this.hostId;
+    
+    // Usuń gracza z listy
     this.players.delete(playerId);
     
+    // Usuń z listy impostorów
     this.impostorIds = this.impostorIds.filter(id => id !== playerId);
     
-    if (playerId === this.hostId) {
-      return true;
+    // ✅ NAPRAWIONE: Usuń głosy, decyzje i skojarzenia rozłączonego gracza
+    this.votes.delete(playerId);
+    this.decisions.delete(playerId);
+    this.associations.delete(playerId);
+    this.guesses.delete(playerId);
+    
+    // ✅ NAPRAWIONE: Usuń głosy NA rozłączonego gracza
+    for (const [voterId, votedId] of this.votes.entries()) {
+      if (votedId === playerId) {
+        this.votes.delete(voterId);
+        const voter = this.players.get(voterId);
+        if (voter) {
+          voter.voteSubmitted = false;
+        }
+      }
     }
     
-    return false;
+    // ✅ NAPRAWIONE: Sprawdź czy można kontynuować głosowanie/decyzje po rozłączeniu gracza
+    let shouldProcessVotes = false;
+    let shouldProcessDecision = false;
+    let voteResults = null;
+    let decisionResult = null;
+    
+    if (this.isVoting && this.players.size > 0) {
+      const allVoted = Array.from(this.players.values())
+        .every(p => this.votes.has(p.id));
+      if (allVoted) {
+        shouldProcessVotes = true;
+        voteResults = this.calculateVoteResults();
+      }
+    }
+    
+    if (this.isDeciding && this.players.size > 0) {
+      const allDecided = Array.from(this.players.values())
+        .every(p => p.hasDecided);
+      if (allDecided) {
+        shouldProcessDecision = true;
+        decisionResult = this.calculateDecisionResult();
+      }
+    }
+    
+    // ✅ NAPRAWIONE: Sprawdź minimalną liczbę graczy
+    if (this.isPlaying && this.players.size < 2) {
+      this.isPlaying = false;
+      this.gameEnded = true;
+    }
+    
+    // Zwróć informacje o stanie
+    if (wasHost) {
+      return { 
+        wasHost: true,
+        shouldProcessVotes,
+        shouldProcessDecision,
+        voteResults,
+        decisionResult
+      };
+    }
+    
+    return { 
+      wasHost: false,
+      shouldProcessVotes,
+      shouldProcessDecision,
+      voteResults,
+      decisionResult
+    };
   }
 
   startGame() {
@@ -359,14 +423,25 @@ class Game {
       if (this.isVoting && this.isPlaying) {
         console.log(`Game ${this.code}: Voting timeout - forcing vote calculation`);
         const voteResults = this.calculateVoteResults();
-        this.handleVoteResults(voteResults);
+        // ✅ NAPRAWIONE: Zapisz wynik tylko raz (było wywołane 2 razy)
+        const outcome = this.handleVoteResults(voteResults);
         
         // Powiadom wszystkich graczy
         io.to(this.code).emit('voteResults', {
           results: voteResults,
-          outcome: this.handleVoteResults(voteResults),
+          outcome: outcome,  // ✅ Użyj zapisanego wyniku zamiast wywoływać ponownie
           gameState: this.getGameState()
         });
+        
+        // ✅ NAPRAWIONE: Obsługa zakończenia gry po timeout
+        if (outcome.gameEnded) {
+          setTimeout(() => {
+            io.to(this.code).emit('gameEnded', {
+              reason: 'allImpostorsFound',
+              gameState: this.getGameState()
+            });
+          }, 3000);
+        }
       }
     }, 30000);
     
@@ -381,10 +456,12 @@ class Game {
     }
     
     const voter = this.players.get(voterId);
-    if (voter) {
-      voter.voteSubmitted = true;
+    if (!voter) {
+      console.log(`Game ${this.code}: Invalid voter - player ${voterId} doesn't exist`);
+      return null;
     }
     
+    voter.voteSubmitted = true;
     this.votes.set(voterId, votedPlayerId);
     
     const allVoted = Array.from(this.players.values())
@@ -1056,9 +1133,10 @@ io.on('connection', (socket) => {
     
     const game = games.get(gameCode);
     
-    const gameEnded = game.removePlayer(socket.id);
+    // ✅ NAPRAWIONE: Poprawiona obsługa rozłączenia gracza
+    const removeResult = game.removePlayer(socket.id);
     
-    if (gameEnded) {
+    if (removeResult.wasHost) {
       io.to(gameCode).emit('hostDisconnected');
       games.delete(gameCode);
       console.log(`Gra zakończona: ${gameCode} (host wyszedł)`);
@@ -1066,10 +1144,49 @@ io.on('connection', (socket) => {
       games.delete(gameCode);
       console.log(`Gra usunięta: ${gameCode} (brak graczy)`);
     } else {
-      io.to(gameCode).emit('playerLeft', {
-        playerId: socket.id,
-        gameState: game.getGameState()
-      });
+      // ✅ NAPRAWIONE: Automatyczne przetwarzanie głosowania/decyzji jeśli warunki są spełnione
+      if (removeResult.shouldProcessVotes && removeResult.voteResults) {
+        setTimeout(() => {
+          const voteOutcome = game.handleVoteResults(removeResult.voteResults);
+          
+          io.to(gameCode).emit('voteResults', {
+            results: removeResult.voteResults,
+            outcome: voteOutcome,
+            gameState: game.getGameState()
+          });
+          
+          if (voteOutcome.gameEnded) {
+            setTimeout(() => {
+              io.to(gameCode).emit('gameEnded', {
+                reason: 'allImpostorsFound',
+                gameState: game.getGameState()
+              });
+            }, 3000);
+          }
+        }, 500);
+      } else if (removeResult.shouldProcessDecision && removeResult.decisionResult) {
+        setTimeout(() => {
+          if (removeResult.decisionResult.majorityWantsVote) {
+            game.startVoting();
+            io.to(gameCode).emit('votingStarted', {
+              decisionResult: removeResult.decisionResult,
+              gameState: game.getGameState()
+            });
+          } else {
+            game.nextRound(true);
+            io.to(gameCode).emit('nextRoundStarted', {
+              gameState: game.getGameState()
+            });
+          }
+        }, 500);
+      } else {
+        // Zwykłe powiadomienie o opuszczeniu gracza
+        io.to(gameCode).emit('playerLeft', {
+          playerId: socket.id,
+          gameState: game.getGameState()
+        });
+      }
+      
       console.log(`Gracz wyszedł: ${socket.id} z gry ${gameCode}`);
     }
   });
