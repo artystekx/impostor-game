@@ -1350,11 +1350,24 @@ io.on('connection', (socket) => {
   
   socket.on('restartGame', () => {
     const gameCode = socket.gameCode;
-    if (!gameCode || !games.has(gameCode)) return;
+    if (!gameCode || !games.has(gameCode)) {
+      socket.emit('error', { message: 'Gra nie istnieje' });
+      return;
+    }
     
     const game = games.get(gameCode);
     
-    if (socket.id !== game.hostId) return;
+    // ✅ NAPRAWIONE: Sprawdź czy gracz jest hostem
+    if (socket.id !== game.hostId) {
+      socket.emit('error', { message: 'Tylko host może zrestartować grę' });
+      return;
+    }
+    
+    // Sprawdź czy host nadal istnieje w grze
+    if (!game.players.has(game.hostId)) {
+      socket.emit('error', { message: 'Host opuścił grę' });
+      return;
+    }
     
     // Zatrzymaj wszystkie timery
     if (game.turnTimerBroadcastInterval) {
