@@ -1182,56 +1182,283 @@ small {
 }
 
 @media (max-width: 768px) {
-    .container {
+    body {
         padding: 10px;
     }
     
+    .container {
+        padding: 10px;
+        max-width: 100%;
+    }
+    
     .panel {
-        padding: 25px;
+        padding: 20px;
+        border-radius: 15px;
+    }
+    
+    header {
+        padding: 20px;
+        margin-bottom: 20px;
     }
     
     h1 {
+        font-size: 1.8rem;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    h1 i {
         font-size: 2rem;
     }
     
     .subtitle {
-        font-size: 1.1rem;
+        font-size: 1rem;
+        line-height: 1.4;
     }
     
     .word-display {
-        font-size: 2.5rem;
+        font-size: 2rem;
+        padding: 15px;
+        min-height: 60px;
+    }
+    
+    .word-section {
+        padding: 25px 15px;
+        margin: 25px 0;
+    }
+    
+    .word-label {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
     }
     
     .btn {
-        padding: 15px 25px;
-        font-size: 1.1rem;
+        padding: 12px 20px;
+        font-size: 1rem;
+        width: 100%;
+        margin: 8px 0;
+    }
+    
+    .button-group {
+        margin-top: 25px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
     }
     
     .code-display {
-        font-size: 2.5rem;
-        letter-spacing: 10px;
+        font-size: 2rem;
+        letter-spacing: 8px;
         padding: 20px;
     }
     
     .chat-container {
-        height: 300px;
+        height: 250px;
+        padding: 15px;
     }
     
     .associations-list {
         grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .association-card {
+        padding: 20px;
     }
     
     .results-title {
-        font-size: 2.2rem;
+        font-size: 1.8rem;
     }
     
     .game-logo {
-        width: 60px;
-        height: 60px;
+        width: 50px;
+        height: 50px;
     }
     
     .discord-link {
-        font-size: 1rem;
+        font-size: 0.9rem;
+        padding: 8px 12px;
+    }
+    
+    .game-header {
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .round-info {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+    
+    .round-badge, .game-mode-badge, .impostor-badge, .time-badge {
+        font-size: 0.9rem;
         padding: 8px 15px;
+    }
+    
+    .time-badge {
+        font-size: 1.5rem;
+        min-width: 60px;
+    }
+    
+    .turn-info {
+        padding: 20px;
+        margin: 20px 0;
+    }
+    
+    .current-turn {
+        font-size: 1.5rem;
+    }
+    
+    .turn-timer {
+        font-size: 2.5rem;
+    }
+    
+    .association-input-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    #association-input {
+        font-size: 1.1rem;
+        padding: 15px;
+    }
+    
+    .guess-input-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    #guess-input {
+        font-size: 1rem;
+        padding: 15px;
+    }
+    
+    .vote-options {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .vote-btn {
+        padding: 20px;
+        font-size: 1.1rem;
+    }
+    
+    .players-list {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .player-card {
+        padding: 20px;
+    }
+    
+    .player-name {
+        font-size: 1.2rem;
+    }
+    
+    .input-group {
+        margin-bottom: 20px;
+    }
+    
+    input, select, textarea {
+        padding: 15px;
+        font-size: 1rem;
+    }
+    
+    label {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+    
+    .modal-content {
+        padding: 25px;
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .notification {
+        top: 15px;
+        right: 15px;
+        left: 15px;
+        max-width: calc(100% - 30px);
+        padding: 15px 20px;
+        font-size: 0.9rem;
+    }
+    
+    .connection-status {
+        bottom: 15px;
+        left: 15px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+    
+    .sidebar-section {
+        padding: 20px;
+    }
+    
+    .sidebar-section h3 {
+        font-size: 1.3rem;
+    }
+    
+    .game-info {
+        padding: 15px;
+    }
+    
+    .game-info p {
+        font-size: 0.9rem;
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 5px;
+    }
+    
+    .container {
+        padding: 5px;
+    }
+    
+    .panel {
+        padding: 15px;
+    }
+    
+    header {
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    .word-display {
+        font-size: 1.8rem;
+    }
+    
+    .code-display {
+        font-size: 1.8rem;
+        letter-spacing: 5px;
+        padding: 15px;
+    }
+    
+    .btn {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+    
+    .time-badge {
+        font-size: 1.3rem;
+        min-width: 50px;
+    }
+    
+    .turn-timer {
+        font-size: 2rem;
     }
 }
