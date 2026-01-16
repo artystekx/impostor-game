@@ -282,6 +282,12 @@ function initSocket() {
         gameState = data.gameState;
         showWordGuessed(data);
         
+        // ✅ NAPRAWIONE: Zatrzymaj wszystkie timery
+        if (timerInterval) clearInterval(timerInterval);
+        if (turnTimerInterval) clearInterval(turnTimerInterval);
+        if (votingTimerInterval) clearInterval(votingTimerInterval);
+        if (decisionTimerInterval) clearInterval(decisionTimerInterval);
+        
         // Dodaj wiadomość do czatu
         addChatMessage({
             type: 'system',
