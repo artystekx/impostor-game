@@ -50,7 +50,546 @@ const wordPairs = [
   { word: "TELEWIZOR", hint: "Urządzenie do oglądania programów" },
   { word: "FOTEL", hint: "Mebel do siedzenia" },
   { word: "PARASOL", hint: "Ochrona przed deszczem" },
-  { word: "ZEGAR", hint: "Pokazuje czas" }
+  { word: "ZEGAR", hint: "Pokazuje czas" },
+  { word: "KAPELUSZ", hint: "Nakrycie głowy" },
+  { word: "BUTY", hint: "Obuwie" },
+  { word: "PLECAK", hint: "Torba na plecach" },
+  { word: "OKULARY", hint: "Do patrzenia" },
+  { word: "DŁUGOPIS", hint: "Narzędzie do pisania" },
+  { word: "NOTATNIK", hint: "Zeszyt" },
+  { word: "LUSTRO", hint: "Odbija obraz" },
+  { word: "WISZĄCY", hint: "Zawieszenie" },
+  { word: "ŚWIATŁO", hint: "Oświetlenie" },
+  { word: "GITARA", hint: "Instrument muzyczny" },
+  { word: "PIANINO", hint: "Duży instrument" },
+  { word: "KAMERA", hint: "Nagrywa obrazy" },
+  { word: "DYWAN", hint: "Wykładzina podłogowa" },
+  { word: "KOC", hint: "Do przykrycia" },
+  { word: "PODUSZKA", hint: "Do spania" },
+  { word: "ŁÓŻKO", hint: "Mebel do spania" },
+  { word: "SZAFKA", hint: "Mebel na rzeczy" },
+  { word: "LODÓWKA", hint: "Chłodzi jedzenie" },
+  { word: "PIEKARNIK", hint: "Pieczenie" },
+  { word: "ZLEW", hint: "Mycie naczyń" },
+  { word: "SZTUĆCE", hint: "Przyrządy do jedzenia" },
+  { word: "TALERZ", hint: "Naczynie na jedzenie" },
+  { word: "KUBEK", hint: "Do picia" },
+  { word: "CZAPKA", hint: "Nakrycie głowy" },
+  { word: "SZALIK", hint: "Owijanie szyi" },
+  { word: "RĘKAWICZKI", hint: "Na dłonie" },
+  { word: "KURTKA", hint: "Odzież wierzchnia" },
+  { word: "SPODNIE", hint: "Odzież na nogi" },
+  { word: "KOSZULA", hint: "Odzież górna" },
+  { word: "SKARPETKI", hint: "Na stopy" },
+  { word: "SZNURÓWKI", hint: "Do wiązania" },
+  { word: "SUKIENKA", hint: "Odzież damska" },
+  { word: "KRAWAT", hint: "Męski dodatek" },
+  { word: "BIŻUTERIA", hint: "Ozdoby" },
+  { word: "PIERŚCIEŃ", hint: "Na palec" },
+  { word: "NASZYJNIK", hint: "Na szyję" },
+  { word: "BRANSOLETKA", hint: "Na nadgarstek" },
+  { word: "KOLCZYKI", hint: "W uszach" },
+  { word: "PORTRET", hint: "Obraz osoby" },
+  { word: "OBRAZ", hint: "Malowidło" },
+  { word: "RZEŹBA", hint: "Sztuka 3D" },
+  { word: "KWIATY", hint: "Rośliny ozdobne" },
+  { word: "DONICZKA", hint: "Na rośliny" },
+  { word: "WĄŻ", hint: "Gad" },
+  { word: "PTAK", hint: "Lata" },
+  { word: "RYBA", hint: "Pływa" },
+  { word: "MOTYL", hint: "Skrzydlate owady" },
+  { word: "PSZCZOŁA", hint: "Daje miód" },
+  { word: "MRÓWKA", hint: "Małe owady" },
+  { word: "ŻABA", hint: "Skacze" },
+  { word: "JEŻ", hint: "Kolczasty" },
+  { word: "ZAJĄC", hint: "Szybki" },
+  { word: "SARNĄ", hint: "Leśne zwierzę" },
+  { word: "WILK", hint: "Drapieżnik" },
+  { word: "NIEDŹWIEDŹ", hint: "Duże zwierzę" },
+  { word: "LIS", hint: "Rudy" },
+  { word: "WIEŻA", hint: "Wysoka budowla" },
+  { word: "MOST", hint: "Przejście przez wodę" },
+  { word: "TUNEL", hint: "Pod ziemią" },
+  { word: "DROGA", hint: "Do jazdy" },
+  { word: "ŚCIEŻKA", hint: "Wąska droga" },
+  { word: "PARK", hint: "Miejsce relaksu" },
+  { word: "PLAC", hint: "Otwarta przestrzeń" },
+  { word: "POMNIK", hint: "Upamiętnienie" },
+  { word: "FONTANNA", hint: "Woda tryska" },
+  { word: "ŁAWKA", hint: "Do siedzenia" },
+  { word: "LATARNIA", hint: "Oświetla" },
+  { word: "KOSZ", hint: "Na śmieci" },
+  { word: "SKRZYŻOWANIE", hint: "Przecinanie dróg" },
+  { word: "SZYNA", hint: "Dla pociągu" },
+  { word: "PERON", hint: "Czekanie na pociąg" },
+  { word: "DWORZEC", hint: "Stacja kolejowa" },
+  { word: "LOTNISKO", hint: "Samoloty" },
+  { word: "PORT", hint: "Statki" },
+  { word: "PLAŻA", hint: "Nad morzem" },
+  { word: "PIASEK", hint: "Na plaży" },
+  { word: "MUSZLA", hint: "Z morza" },
+  { word: "FALA", hint: "Na wodzie" },
+  { word: "ŁÓDKA", hint: "Mały statek" },
+  { word: "JACHT", hint: "Luksusowa łódź" },
+  { word: "ŻAGIEL", hint: "Napęd łodzi" },
+  { word: "KOTWICA", hint: "Utrzymuje statek" },
+  { word: "KOMUNIKAT", hint: "Wiadomość" },
+  { word: "LIST", hint: "Wiadomość pisemna" },
+  { word: "KOPERTA", hint: "Na list" },
+  { word: "ZNAK", hint: "Oznaczenie" },
+  { word: "TABLICA", hint: "Do pisania" },
+  { word: "KREDA", hint: "Do tablicy" },
+  { word: "GUMKA", hint: "Do ścierania" },
+  { word: "LINIJKA", hint: "Do mierzenia" },
+  { word: "CYRYKL", hint: "Do kół" },
+  { word: "NOŻYCE", hint: "Do cięcia" },
+  { word: "KLEJ", hint: "Łączy" },
+  { word: "ZESZYT", hint: "Do pisania" },
+  { word: "KSIĄŻKA", hint: "Do czytania" },
+  { word: "BIBLIOTEKA", hint: "Miejsce z książkami" },
+  { word: "CZYTELNIA", hint: "Czytanie książek" },
+  { word: "REGAL", hint: "Na książki" },
+  { word: "PÓŁKA", hint: "Miejsce na rzeczy" },
+  { word: "SZAFA", hint: "Duży mebel" },
+  { word: "SZUFŁADA", hint: "W szafie" },
+  { word: "WĄTEK", hint: "Nić" },
+  { word: "IGŁA", hint: "Do szycia" },
+  { word: "NITKA", hint: "Do zszywania" },
+  { word: "GUZIK", hint: "Zapięcie" },
+  { word: "ZAMEK", hint: "Błyskawiczny" },
+  { word: "RZEP", hint: "Zapięcie" },
+  { word: "KARTA", hint: "Do płatności" },
+  { word: "PORTFEL", hint: "Na pieniądze" },
+  { word: "MONETA", hint: "Pieniądz" },
+  { word: "BANKNOT", hint: "Pieniądz papierowy" },
+  { word: "SKARBONKA", hint: "Na oszczędności" },
+  { word: "KALKULATOR", hint: "Liczy" },
+  { word: "LICZNIK", hint: "Pokazuje liczbę" },
+  { word: "WAGA", hint: "Mierzy ciężar" },
+  { word: "TERMOMETR", hint: "Temperatura" },
+  { word: "BAROMETR", hint: "Ciśnienie" },
+  { word: "KOMPAS", hint: "Kierunek" },
+  { word: "MAPĄ", hint: "Plan terenu" },
+  { word: "GLOBUS", hint: "Model Ziemi" },
+  { word: "ATLAS", hint: "Zbiór map" },
+  { word: "PRZEWODNIK", hint: "Po miejscu" },
+  { word: "BILET", hint: "Uprawnienie" },
+  { word: "KASA", hint: "Sprzedaż biletów" },
+  { word: "KONTROLA", hint: "Sprawdzanie" },
+  { word: "STRAŻNIK", hint: "Pilnuje" },
+  { word: "POLICJANT", hint: "Porządek" },
+  { word: "STRAŻAK", hint: "Gaszenie" },
+  { word: "LEKARZ", hint: "Leczy" },
+  { word: "PIELĘGNIARKA", hint: "Pomaga lekarzowi" },
+  { word: "FARMACEUTA", hint: "Leki" },
+  { word: "NAUCZYCIEL", hint: "Uczy" },
+  { word: "UCZEŃ", hint: "Uczy się" },
+  { word: "STUDENT", hint: "Studiuje" },
+  { word: "PROFESOR", hint: "Wykładowca" },
+  { word: "DYREKTOR", hint: "Kieruje" },
+  { word: "SEKRETARKA", hint: "Pomaga" },
+  { word: "KELNER", hint: "Obsługuje" },
+  { word: "KUCHARZ", hint: "Gotuje" },
+  { word: "SPRZĄTACZKA", hint: "Sprząta" },
+  { word: "TŁUMACZ", hint: "Przekłada" },
+  { word: "PISARZ", hint: "Pisze książki" },
+  { word: "POETA", hint: "Pisze wiersze" },
+  { word: "ARTYSTA", hint: "Tworzy sztukę" },
+  { word: "MALARZ", hint: "Maluje" },
+  { word: "RZEŹBIARZ", hint: "Rzeźbi" },
+  { word: "FOTOGRAF", hint: "Robi zdjęcia" },
+  { word: "DZIENNIKARZ", hint: "Pisze newsy" },
+  { word: "REPORTER", hint: "Relacjonuje" },
+  { word: "KAMERZYSTA", hint: "Nagrywa" },
+  { word: "REŻYSER", hint: "Kieruje filmem" },
+  { word: "AKTOR", hint: "Gra rolę" },
+  { word: "AKTORKA", hint: "Gra rolę" },
+  { word: "PIOSENKARZ", hint: "Śpiewa" },
+  { word: "MUZYK", hint: "Gra muzykę" },
+  { word: "TANCERZ", hint: "Tańczy" },
+  { word: "CHOREOGRAF", hint: "Układa taniec" },
+  { word: "SPORTOWIEC", hint: "Uprawia sport" },
+  { word: "TRENER", hint: "Trenuje" },
+  { word: "SĘDZIA", hint: "Prowadzi mecz" },
+  { word: "KIBIC", hint: "Kibicuje" },
+  { word: "DZIENNIKARZ", hint: "Pisze o sporcie" },
+  { word: "KOMENTATOR", hint: "Komentuje" },
+  { word: "MISTRZ", hint: "Najlepszy" },
+  { word: "WICEMISTRZ", hint: "Drugi" },
+  { word: "BRĄZ", hint: "Trzeci" },
+  { word: "MEDAL", hint: "Nagroda" },
+  { word: "PUCHAR", hint: "Trofeum" },
+  { word: "TROFEUM", hint: "Nagroda" },
+  { word: "DIPLOM", hint: "Certyfikat" },
+  { word: "CERTYFIKAT", hint: "Poświadczenie" },
+  { word: "NAGRODA", hint: "Wyróżnienie" },
+  { word: "WYRÓŻNIENIE", hint: "Uznanie" },
+  { word: "LAUR", hint: "Zwycięstwo" },
+  { word: "ZWYCIĘSTWO", hint: "Wygrać" },
+  { word: "PORAŻKA", hint: "Przegrać" },
+  { word: "REMIS", hint: "Nierozstrzygnięty" },
+  { word: "WYNIK", hint: "Rezultat" },
+  { word: "TABELA", hint: "Wyniki" },
+  { word: "KLASYFIKACJA", hint: "Ranking" },
+  { word: "RUNDA", hint: "Etap" },
+  { word: "ETAP", hint: "Faza" },
+  { word: "FAZA", hint: "Etap" },
+  { word: "FINALS", hint: "Końcowy" },
+  { word: "PÓŁFINAŁ", hint: "Przed finałem" },
+  { word: "ĆWIERĆFINAŁ", hint: "Przed półfinałem" },
+  { word: "GRUPA", hint: "Zespół" },
+  { word: "DRUŻYNA", hint: "Zespół" },
+  { word: "ZESPÓŁ", hint: "Grupa" },
+  { word: "KAPITAN", hint: "Lider" },
+  { word: "LIDER", hint: "Przewodnik" },
+  { word: "PRZEWODNIK", hint: "Prowadzi" },
+  { word: "NASTĘPCA", hint: "Po kimś" },
+  { word: "NASTĘPNY", hint: "Kolejny" },
+  { word: "POPRZEDNI", hint: "Wcześniejszy" },
+  { word: "OBECNY", hint: "Teraz" },
+  { word: "BYŁY", hint: "Wcześniejszy" },
+  { word: "PRZYSZŁY", hint: "Następny" },
+  { word: "PRZESZŁY", hint: "Miniony" },
+  { word: "TERAŹNIEJSZY", hint: "Obecny" },
+  { word: "PRZYSZŁY", hint: "Następny czas" },
+  { word: "PRZYSZŁOŚĆ", hint: "Co będzie" },
+  { word: "PRZESZŁOŚĆ", hint: "Co było" },
+  { word: "TERAŹNIEJSZOŚĆ", hint: "Co jest" },
+  { word: "CHWILA", hint: "Moment" },
+  { word: "MOMENT", hint: "Chwila" },
+  { word: "SEKUNDA", hint: "Czas" },
+  { word: "MINUTA", hint: "60 sekund" },
+  { word: "GODZINA", hint: "60 minut" },
+  { word: "DZIEŃ", hint: "24 godziny" },
+  { word: "TYDZIEŃ", hint: "7 dni" },
+  { word: "MIESIĄC", hint: "~30 dni" },
+  { word: "ROK", hint: "12 miesięcy" },
+  { word: "DZIESIĘCIOLECIE", hint: "10 lat" },
+  { word: "STULECIE", hint: "100 lat" },
+  { word: "TYSIĄCLECIE", hint: "1000 lat" },
+  { word: "EPOKA", hint: "Okres" },
+  { word: "ERA", hint: "Epoka" },
+  { word: "OKRES", hint: "Czas" },
+  { word: "CZAS", hint: "Trwanie" },
+  { word: "TRWANIE", hint: "Czas" },
+  { word: "DŁUGOŚĆ", hint: "Rozmiar" },
+  { word: "SZEROKOŚĆ", hint: "Szeroki" },
+  { word: "WYSOKOŚĆ", hint: "Wysoki" },
+  { word: "GŁĘBOKOŚĆ", hint: "Głęboki" },
+  { word: "ROZMIAR", hint: "Wielkość" },
+  { word: "WIELKOŚĆ", hint: "Rozmiar" },
+  { word: "MAŁOŚĆ", hint: "Mały" },
+  { word: "DUŻOŚĆ", hint: "Duży" },
+  { word: "ŚREDNIOŚĆ", hint: "Średni" },
+  { word: "OGROMNOŚĆ", hint: "Ogromny" },
+  { word: "MINIATUROWOŚĆ", hint: "Miniaturowy" },
+  { word: "OLBRZYMIE", hint: "Bardzo duże" },
+  { word: "KARZEŁ", hint: "Bardzo małe" },
+  { word: "OLBRZYM", hint: "Bardzo duże" },
+  { word: "GIGANT", hint: "Ogromny" },
+  { word: "KOLOS", hint: "Wielki" },
+  { word: "TITAN", hint: "Gigantyczny" },
+  { word: "MONSTER", hint: "Potwór" },
+  { word: "POTWÓR", hint: "Straszny" },
+  { word: "SMOK", hint: "Mityczne" },
+  { word: "JEDNOROŻEC", hint: "Z rogiem" },
+  { word: "FENIKS", hint: "Z ognia" },
+  { word: "GRIFFIN", hint: "Pół orzeł" },
+  { word: "CENTAUR", hint: "Pół człowiek" },
+  { word: "SYRENA", hint: "Pół ryba" },
+  { word: "WILKOŁAK", hint: "Pół wilk" },
+  { word: "WAMPIR", hint: "Pije krew" },
+  { word: "DUCH", hint: "Niewidzialny" },
+  { word: "ZOMBIE", hint: "Nieumarły" },
+  { word: "SZKIELET", hint: "Kościec" },
+  { word: "CZCICIEL", hint: "Czciciel" },
+  { word: "CZAROWNICA", hint: "Magia" },
+  { word: "CZARODZIEJ", hint: "Mag" },
+  { word: "MAG", hint: "Magia" },
+  { word: "WIEDŹMIN", hint: "Zabija potwory" },
+  { word: "RYCERZ", hint: "Walczy" },
+  { word: "WOJOWNIK", hint: "Wojownik" },
+  { word: "ŻOŁNIERZ", hint: "W armii" },
+  { word: "GENERAŁ", hint: "Dowódca" },
+  { word: "KAPITAN", hint: "Dowódca okrętu" },
+  { word: "ADMIRAŁ", hint: "Dowódca floty" },
+  { word: "MAJOR", hint: "Stopień" },
+  { word: "KAPITAN", hint: "Stopień wojskowy" },
+  { word: "PORUCZNIK", hint: "Stopień" },
+  { word: "SIERŻANT", hint: "Stopień" },
+  { word: "KAPRAL", hint: "Stopień" },
+  { word: "SZEREGOWIEC", hint: "Najniższy stopień" },
+  { word: "REKRUT", hint: "Nowy żołnierz" },
+  { word: "WETERAN", hint: "Doświadczony" },
+  { word: "WETERAN", hint: "Stary żołnierz" },
+  { word: "BOHATER", hint: "Odważny" },
+  { word: "MĘŻNY", hint: "Odważny" },
+  { word: "ODWAŻNY", hint: "Nie boi się" },
+  { word: "TCHÓRZLIWY", hint: "Boi się" },
+  { word: "STRASZLIWY", hint: "Straszny" },
+  { word: "PRZERAŻAJĄCY", hint: "Bardzo straszny" },
+  { word: "UPIÓR", hint: "Duch" },
+  { word: "STRASZYDEŁO", hint: "Przestraszyć" },
+  { word: "KOSZMAR", hint: "Zły sen" },
+  { word: "SNY", hint: "Podczas snu" },
+  { word: "MARZENIA", hint: "Chcieć" },
+  { word: "NOCNY", hint: "W nocy" },
+  { word: "DZIENNY", hint: "W dzień" },
+  { word: "PORANNY", hint: "Rano" },
+  { word: "WIECZORNY", hint: "Wieczorem" },
+  { word: "POPOŁUDNIOWY", hint: "Po południu" },
+  { word: "POŁUDNIOWY", hint: "W południe" },
+  { word: "PÓŁNOCNY", hint: "O północy" },
+  { word: "ŚWIT", hint: "Poranek" },
+  { word: "ZMIERZCH", hint: "Wieczór" },
+  { word: "ZACHÓD", hint: "Słońce zachodzi" },
+  { word: "WSCHÓD", hint: "Słońce wschodzi" },
+  { word: "HORYZONT", hint: "Linia widoku" },
+  { word: "NIEBO", hint: "Nad nami" },
+  { word: "CHMURA", hint: "W niebie" },
+  { word: "DESZCZ", hint: "Pada" },
+  { word: "ŚNIEG", hint: "Zimą" },
+  { word: "GRAD", hint: "Lód z nieba" },
+  { word: "BURZA", hint: "Pioruny" },
+  { word: "PIORUN", hint: "Błyskawica" },
+  { word: "BŁYSKAWICA", hint: "Światło" },
+  { word: "GRZMOT", hint: "Dźwięk" },
+  { word: "WICHURA", hint: "Silny wiatr" },
+  { word: "WIATR", hint: "Powieje" },
+  { word: "POWIEJ", hint: "Ruch powietrza" },
+  { word: "HURAGAN", hint: "Bardzo silny wiatr" },
+  { word: "TSUNAMI", hint: "Fala" },
+  { word: "TRZĘSIENIE", hint: "Ziemi" },
+  { word: "WULKAN", hint: "Wybucha" },
+  { word: "LAWA", hint: "Z wulkanu" },
+  { word: "POPIÓŁ", hint: "Po spaleniu" },
+  { word: "DYM", hint: "Z ognia" },
+  { word: "ISKRA", hint: "Z ognia" },
+  { word: "PŁOMIEŃ", hint: "Ogień" },
+  { word: "ŻAR", hint: "Gorąco" },
+  { word: "GORĄCO", hint: "Wysoka temperatura" },
+  { word: "ZIMNO", hint: "Niska temperatura" },
+  { word: "CIEPŁO", hint: "Średnia temperatura" },
+  { word: "TEMPERATURA", hint: "Ciepło/zimno" },
+  { word: "KLIMAT", hint: "Długotrwała pogoda" },
+  { word: "POGODA", hint: "Stan atmosfery" },
+  { word: "ATMOSFERA", hint: "Powietrze" },
+  { word: "POWIETRZE", hint: "Oddychamy" },
+  { word: "TLEN", hint: "W powietrzu" },
+  { word: "AZOT", hint: "W powietrzu" },
+  { word: "DWUTLENEK", hint: "Węgla" },
+  { word: "PARA", hint: "Wodna" },
+  { word: "WILGOĆ", hint: "Woda w powietrzu" },
+  { word: "SUCHOŚĆ", hint: "Brak wody" },
+  { word: "MOKROŚĆ", hint: "Jest woda" },
+  { word: "WILGOTNOŚĆ", hint: "Woda w powietrzu" },
+  { word: "ROSA", hint: "Rano" },
+  { word: "SZRON", hint: "Zimą" },
+  { word: "SZADŹ", hint: "Zimą" },
+  { word: "LÓD", hint: "Zamrożona woda" },
+  { word: "ŚNIEG", hint: "Zimą spada" },
+  { word: "BAŁWAN", hint: "Ze śniegu" },
+  { word: "SANKI", hint: "Zimą" },
+  { word: "NARTY", hint: "Na stoku" },
+  { word: "SNOWBOARD", hint: "Jedna deska" },
+  { word: "ŁYŻWY", hint: "Na lodzie" },
+  { word: "HOKEJ", hint: "Na lodzie" },
+  { word: "PŁYWANIE", hint: "W wodzie" },
+  { word: "BASEN", hint: "Do pływania" },
+  { word: "KĄPIELISKO", hint: "Miejsce kąpieli" },
+  { word: "PLAŻA", hint: "Nad morzem" },
+  { word: "PIASEK", hint: "Na plaży" },
+  { word: "MUSZLA", hint: "Z morza" },
+  { word: "KAMIEŃ", hint: "Twardy" },
+  { word: "GŁAZ", hint: "Duży kamień" },
+  { word: "SKAŁA", hint: "Twarda formacja" },
+  { word: "GÓRA", hint: "Wysoka" },
+  { word: "WZGÓRZE", hint: "Niskie góry" },
+  { word: "WZGÓRZE", hint: "Mała góra" },
+  { word: "DOLINA", hint: "Pomiędzy górami" },
+  { word: "KANION", hint: "Głęboka dolina" },
+  { word: "WĄWÓZ", hint: "Wąska dolina" },
+  { word: "JASKINIA", hint: "Pod ziemią" },
+  { word: "GROTA", hint: "Jaskinia" },
+  { word: "STALAKTYTY", hint: "Z sufitu" },
+  { word: "STALAGMITY", hint: "Z podłogi" },
+  { word: "SKARLENIE", hint: "Z jaskini" },
+  { word: "PODZIEMIE", hint: "Pod ziemią" },
+  { word: "ZIEMIA", hint: "Planeta" },
+  { word: "GLEBA", hint: "Warstwa ziemi" },
+  { word: "PIASEK", hint: "Drobne ziarna" },
+  { word: "ŻWIR", hint: "Drobne kamienie" },
+  { word: "KAMIENIE", hint: "Twarde" },
+  { word: "GŁAZY", hint: "Duże kamienie" },
+  { word: "SKAŁY", hint: "Twarde formacje" },
+  { word: "GRUNT", hint: "Ziemia" },
+  { word: "DARŃ", hint: "Trawa" },
+  { word: "TRAWA", hint: "Roślina" },
+  { word: "MUrawa", hint: "Przycięta trawa" },
+  { word: "MEch", hint: "Miękki" },
+  { word: "POROST", hint: "Na drzewie" },
+  { word: "KORA", hint: "Drzewa" },
+  { word: "LIŚĆ", hint: "Drzewa" },
+  { word: "GAŁĄŹ", hint: "Drzewa" },
+  { word: "KONAR", hint: "Duża gałąź" },
+  { word: "PNIĄ", hint: "Główna część" },
+  { word: "KORZEŃ", hint: "Pod ziemią" },
+  { word: "NASIONO", hint: "Z drzewa" },
+  { word: "SZCZEP", hint: "Młode drzewo" },
+  { word: "SADZONKA", hint: "Młoda roślina" },
+  { word: "ROŚLINA", hint: "Żywa" },
+  { word: "KWIAT", hint: "Ozdoba" },
+  { word: "PĄK", hint: "Zanim zakwitnie" },
+  { word: "PŁATEK", hint: "Kwiatu" },
+  { word: "PŁATKI", hint: "Kwiatu" },
+  { word: "SŁUPK", hint: "Kwiatu" },
+  { word: "PRĘCIK", hint: "Kwiatu" },
+  { word: "PYŁEK", hint: "Z kwiatu" },
+  { word: "NEKTAR", hint: "Z kwiatu" },
+  { word: "MIÓD", hint: "Z nektaru" },
+  { word: "WOSK", hint: "Z pszczół" },
+  { word: "UL", hint: "Dla pszczół" },
+  { word: "PSZCZOŁA", hint: "Daje miód" },
+  { word: "TRUTEŃ", hint: "Samiec pszczoły" },
+  { word: "KRÓLOWA", hint: "Matka pszczół" },
+  { word: "ROBAK", hint: "Małe zwierzę" },
+  { word: "OWAD", hint: "Małe zwierzę" },
+  { word: "PAJĄK", hint: "Z siecią" },
+  { word: "SIECI", hint: "Pająka" },
+  { word: "PĘDZLAK", hint: "Mały pająk" },
+  { word: "SKORPION", hint: "Z ogonem" },
+  { word: "KARAKURT", hint: "Jadowity pająk" },
+  { word: "TARANTULA", hint: "Duży pająk" },
+  { word: "STONOGA", hint: "Wiele nóg" },
+  { word: "WIJA", hint: "Stonoga" },
+  { word: "ŚLIMAK", hint: "Pełzający" },
+  { word: "MUSZLA", hint: "Ślimaka" },
+  { word: "MAŁŻ", hint: "W muszli" },
+  { word: "OSTRYGA", hint: "Jadalny małż" },
+  { word: "KREWETKA", hint: "Skorupiak" },
+  { word: "RAK", hint: "Skorupiak" },
+  { word: "KARAB", hint: "Duży rak" },
+  { word: "HOMAR", hint: "Duży skorupiak" },
+  { word: "KAMARON", hint: "Skorupiak" },
+  { word: "KAŁAMARZ", hint: "Głowonóg" },
+  { word: "OŚMIORNICA", hint: "8 ramion" },
+  { word: "MĄTWĄ", hint: "Głowonóg" },
+  { word: "MEDUZA", hint: "Parzy" },
+  { word: "KORAL", hint: "W morzu" },
+  { word: "RAFA", hint: "Koralowa" },
+  { word: "PERŁA", hint: "Z ostrygi" },
+  { word: "PERŁOPŁAW", hint: "Daje perły" },
+  { word: "SZCZĘŚLIWY", hint: "Radosny" },
+  { word: "RADOSNY", hint: "Szczęśliwy" },
+  { word: "ZADOWOLONY", hint: "Zadowolony" },
+  { word: "USZCZĘŚLIWIONY", hint: "Bardzo szczęśliwy" },
+  { word: "ECSTATYCZNY", hint: "W euforii" },
+  { word: "EUFORYCZNY", hint: "W euforii" },
+  { word: "EUFORIA", hint: "Ekstremalna radość" },
+  { word: "RADOŚĆ", hint: "Pozytywne uczucie" },
+  { word: "SZCZĘŚCIE", hint: "Radość" },
+  { word: "ZACHWYT", hint: "Podziw" },
+  { word: "PODZIW", hint: "Uznanie" },
+  { word: "UZNANIE", hint: "Docenienie" },
+  { word: "DOCENIENIE", hint: "Wartość" },
+  { word: "WARTOŚĆ", hint: "Cenna" },
+  { word: "CENNA", hint: "Droga" },
+  { word: "DROGA", hint: "Kosztowna" },
+  { word: "KOSZTOWNA", hint: "Droga" },
+  { word: "TANIA", hint: "Niedroga" },
+  { word: "NIEDROGA", hint: "Tania" },
+  { word: "DARMOWA", hint: "Bezpłatna" },
+  { word: "BEZPŁATNA", hint: "Darmowa" },
+  { word: "PŁATNA", hint: "Trzeba zapłacić" },
+  { word: "OPŁATA", hint: "Płatność" },
+  { word: "PŁATNOŚĆ", hint: "Zapłata" },
+  { word: "ZAPŁATA", hint: "Pieniądze" },
+  { word: "PIENIĄDZE", hint: "Środki płatnicze" },
+  { word: "GOTÓWKA", hint: "Pieniądze" },
+  { word: "KARTA", hint: "Płatnicza" },
+  { word: "CZEK", hint: "Płatniczy" },
+  { word: "WEKSEL", hint: "Płatniczy" },
+  { word: "BANKNOT", hint: "Pieniądze" },
+  { word: "MONETA", hint: "Pieniądze" },
+  { word: "GROSZ", hint: "1/100 złotego" },
+  { word: "ZŁOTY", hint: "Pieniądze Polski" },
+  { word: "EURO", hint: "Pieniądze UE" },
+  { word: "DOLAR", hint: "Pieniądze USA" },
+  { word: "FUNT", hint: "Pieniądze UK" },
+  { word: "JEN", hint: "Pieniądze Japonii" },
+  { word: "JUAN", hint: "Pieniądze Chin" },
+  { word: "RUBEL", hint: "Pieniądze Rosji" },
+  { word: "FRANK", hint: "Pieniądze Szwajcarii" },
+  { word: "KORONA", hint: "Pieniądze Czech" },
+  { word: "FORINT", hint: "Pieniądze Węgier" },
+  { word: "LEJ", hint: "Pieniądze Rumunii" },
+  { word: "LEW", hint: "Pieniądze Bułgarii" },
+  { word: "KUNA", hint: "Pieniądze Chorwacji" },
+  { word: "DINAR", hint: "Pieniądze Serbii" },
+  { word: "LIRA", hint: "Pieniądze Turcji" },
+  { word: "SHEKEL", hint: "Pieniądze Izraela" },
+  { word: "RUPIA", hint: "Pieniądze Indii" },
+  { word: "BAHT", hint: "Pieniądze Tajlandii" },
+  { word: "RINGGIT", hint: "Pieniądze Malezji" },
+  { word: "DONG", hint: "Pieniądze Wietnamu" },
+  { word: "WON", hint: "Pieniądze Korei" },
+  { word: "PESO", hint: "Pieniądze Meksyku" },
+  { word: "REAL", hint: "Pieniądze Brazylii" },
+  { word: "PESO", hint: "Pieniądze Argentyny" },
+  { word: "SOL", hint: "Pieniądze Peru" },
+  { word: "BOLIVAR", hint: "Pieniądze Wenezueli" },
+  { word: "PESO", hint: "Pieniądze Chile" },
+  { word: "GUARANI", hint: "Pieniądze Paragwaju" },
+  { word: "SUCRE", hint: "Pieniądze Ekwadoru" },
+  { word: "BOLIVIANO", hint: "Pieniądze Boliwii" },
+  { word: "COLON", hint: "Pieniądze Kostaryki" },
+  { word: "QUETZAL", hint: "Pieniądze Gwatemali" },
+  { word: "LEMPIRA", hint: "Pieniądze Hondurasu" },
+  { word: "CORDOBA", hint: "Pieniądze Nikaragui" },
+  { word: "BALBOA", hint: "Pieniądze Panamy" },
+  { word: "COLON", hint: "Pieniądze Salwadoru" },
+  { word: "DOLAR", hint: "Pieniądze Australii" },
+  { word: "DOLAR", hint: "Pieniądze Kanady" },
+  { word: "DOLAR", hint: "Pieniądze Nowej Zelandii" },
+  { word: "RAND", hint: "Pieniądze RPA" },
+  { word: "NAIRA", hint: "Pieniądze Nigerii" },
+  { word: "SHILLING", hint: "Pieniądze Kenii" },
+  { word: "BIRR", hint: "Pieniądze Etiopii" },
+  { word: "EGIPSKI", hint: "Funt" },
+  { word: "DIRHAM", hint: "Pieniądze Maroka" },
+  { word: "DINAR", hint: "Pieniądze Tunezji" },
+  { word: "DINAR", hint: "Pieniądze Algierii" },
+  { word: "DINAR", hint: "Pieniądze Libii" },
+  { word: "RIAL", hint: "Pieniądze Iranu" },
+  { word: "RIAL", hint: "Pieniądze Omanu" },
+  { word: "RIYAL", hint: "Pieniądze Arabii Saudyjskiej" },
+  { word: "DIRHAM", hint: "Pieniądze ZEA" },
+  { word: "DINAR", hint: "Pieniądze Kuwejtu" },
+  { word: "DINAR", hint: "Pieniądze Bahrajnu" },
+  { word: "RIAL", hint: "Pieniądze Kataru" },
+  { word: "AFGHANI", hint: "Pieniądze Afganistanu" },
+  { word: "TAKA", hint: "Pieniądze Bangladeszu" },
+  { word: "RUPIA", hint: "Pieniądze Pakistanu" },
+  { word: "RUPIA", hint: "Pieniądze Sri Lanki" },
+  { word: "RUFIYAA", hint: "Pieniądze Malediwów" },
+  { word: "NGULTRUM", hint: "Pieniądze Bhutanu" },
+  { word: "KYAT", hint: "Pieniądze Birmy" },
+  { word: "KIP", hint: "Pieniądze Laosu" },
+  { word: "RIEL", hint: "Pieniądze Kambodży" },
+  { word: "TUGRIK", hint: "Pieniądze Mongolii" },
+  { word: "SOM", hint: "Pieniądze Kirgistanu" },
+  { word: "SOMONI", hint: "Pieniądze Tadżykistanu" },
+  { word: "MANAT", hint: "Pieniądze Turkmenistanu" },
+  { word: "SUM", hint: "Pieniądze Uzbekistanu" },
+  { word: "TENGE", hint: "Pieniądze Kazachstanu" },
+  { word: "LARI", hint: "Pieniądze Gruzji" },
+  { word: "DRAM", hint: "Pieniądze Armenii" },
+  { word: "MANAT", hint: "Pieniądze Azerbejdżanu" },
+  { word: "LEU", hint: "Pieniądze Mołdawii" },
+  { word: "HRYWNIA", hint: "Pieniądze Ukrainy" },
+  { word: "RUBEL", hint: "Pieniądze Białorusi" },
+  { word: "RUBEL", hint: "Pieniądze Rosji" },
+  { word: "RUBLE", hint: "Pieniądze Rosji" }
 ];
 
 // Przechowywanie gier
@@ -342,6 +881,20 @@ class Game {
     player.guess = guess;
     this.guesses.set(playerId, guess);
     
+    // ✅ NAPRAWIONE: Zatrzymaj wszystkie timery przed zakończeniem gry
+    if (this.turnTimerBroadcastInterval) {
+      clearInterval(this.turnTimerBroadcastInterval);
+      this.turnTimerBroadcastInterval = null;
+    }
+    if (this.votingTimeout) {
+      clearTimeout(this.votingTimeout);
+      this.votingTimeout = null;
+    }
+    if (this.decisionTimeout) {
+      clearTimeout(this.decisionTimeout);
+      this.decisionTimeout = null;
+    }
+    
     const guessedCorrectly = guess.trim().toLowerCase() === this.word.toLowerCase();
     
     if (guessedCorrectly) {
@@ -363,6 +916,111 @@ class Game {
         guesserName: player.name
       };
     }
+  }
+  
+  // ✅ NOWA FUNKCJA: Zatrzymaj wszystkie timery
+  stopAllTimers() {
+    if (this.turnTimerBroadcastInterval) {
+      clearInterval(this.turnTimerBroadcastInterval);
+      this.turnTimerBroadcastInterval = null;
+    }
+    if (this.votingTimeout) {
+      clearTimeout(this.votingTimeout);
+      this.votingTimeout = null;
+    }
+    if (this.decisionTimeout) {
+      clearTimeout(this.decisionTimeout);
+      this.decisionTimeout = null;
+    }
+  }
+  
+  // ✅ NOWA FUNKCJA: Uruchom timer dla aktualnego gracza w trybie sequential
+  startTurnTimerForCurrentPlayer(gameCode, io) {
+    // Zawsze zatrzymaj poprzedni timer
+    this.stopAllTimers();
+    
+    if (this.gameMode !== 'sequential' || !this.isPlaying || this.wordGuessed || this.guessFailed) {
+      return;
+    }
+    
+    const currentPlayerId = this.getCurrentTurnPlayerId();
+    if (!currentPlayerId) {
+      return;
+    }
+    
+    // Ustaw czas startu
+    this.turnStartTime = Date.now();
+    this.turnTimeLeft = 30;
+    
+    // Wyślij początkowy czas
+    io.to(gameCode).emit('turnTimerUpdate', {
+      timeLeft: this.turnTimeLeft,
+      gameState: this.getGameState()
+    });
+    
+    // Rozpocznij broadcast timera
+    this.turnTimerBroadcastInterval = setInterval(() => {
+      if (!this.isPlaying || this.wordGuessed || this.guessFailed || this.gameMode !== 'sequential') {
+        if (this.turnTimerBroadcastInterval) {
+          clearInterval(this.turnTimerBroadcastInterval);
+          this.turnTimerBroadcastInterval = null;
+        }
+        return;
+      }
+      
+      const currentId = this.getCurrentTurnPlayerId();
+      if (!currentId || currentId !== currentPlayerId) {
+        // Gracz się zmienił, zatrzymaj timer
+        if (this.turnTimerBroadcastInterval) {
+          clearInterval(this.turnTimerBroadcastInterval);
+          this.turnTimerBroadcastInterval = null;
+        }
+        return;
+      }
+      
+      const elapsed = Math.floor((Date.now() - this.turnStartTime) / 1000);
+      this.turnTimeLeft = Math.max(0, 30 - elapsed);
+      
+      io.to(gameCode).emit('turnTimerUpdate', {
+        timeLeft: this.turnTimeLeft,
+        gameState: this.getGameState()
+      });
+      
+      // Jeśli czas się skończył
+      if (this.turnTimeLeft <= 0) {
+        if (this.turnTimerBroadcastInterval) {
+          clearInterval(this.turnTimerBroadcastInterval);
+          this.turnTimerBroadcastInterval = null;
+        }
+        
+        const currentPlayer = this.players.get(currentPlayerId);
+        if (currentPlayer && !currentPlayer.hasSubmitted) {
+          this.submitAssociation(currentPlayerId, '');
+          io.to(gameCode).emit('associationSubmitted', {
+            playerId: currentPlayerId,
+            association: '',
+            gameState: this.getGameState()
+          });
+          
+          // Przejdź do następnego gracza
+          const nextPlayerId = this.nextTurn();
+          if (nextPlayerId) {
+            this.startTurnTimerForCurrentPlayer(gameCode, io);
+            io.to(gameCode).emit('nextTurn', {
+              nextPlayerId: nextPlayerId,
+              gameState: this.getGameState()
+            });
+          } else {
+            setTimeout(() => {
+              this.startDecisionPhase();
+              io.to(gameCode).emit('decisionPhaseStarted', {
+                gameState: this.getGameState()
+              });
+            }, 1500);
+          }
+        }
+      }
+    }, 1000);
   }
 
   startDecisionPhase() {
@@ -931,84 +1589,9 @@ io.on('connection', (socket) => {
     
     game.startGame();
     
-    // Uruchom timer dla pierwszego gracza w trybie sequential
+    // ✅ NAPRAWIONE: Uruchom timer dla pierwszego gracza w trybie sequential
     if (game.gameMode === 'sequential') {
-      const firstPlayerId = game.getCurrentTurnPlayerId();
-      if (firstPlayerId) {
-        game.turnStartTime = Date.now();
-        game.turnTimeLeft = 30;
-        
-        // Wyślij początkowy czas natychmiast
-        io.to(gameCode).emit('turnTimerUpdate', {
-          timeLeft: game.turnTimeLeft,
-          gameState: game.getGameState()
-        });
-        
-        // Rozpocznij broadcast timera
-        game.turnTimerBroadcastInterval = setInterval(() => {
-          if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
-            const currentTurnPlayerId = game.getCurrentTurnPlayerId();
-            // ✅ NAPRAWIONE: Sprawdzaj aktualnego gracza, nie tylko pierwszego
-            if (currentTurnPlayerId) {
-              const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
-              game.turnTimeLeft = Math.max(0, 30 - elapsed);
-              
-              io.to(gameCode).emit('turnTimerUpdate', {
-                timeLeft: game.turnTimeLeft,
-                gameState: game.getGameState()
-              });
-              
-              // Jeśli czas się skończył, automatycznie przejdź dalej
-              if (game.turnTimeLeft <= 0) {
-                clearInterval(game.turnTimerBroadcastInterval);
-                game.turnTimerBroadcastInterval = null;
-                
-                const currentPlayer = game.players.get(currentTurnPlayerId);
-                if (currentPlayer && !currentPlayer.hasSubmitted) {
-                  game.submitAssociation(currentTurnPlayerId, '');
-                  io.to(gameCode).emit('associationSubmitted', {
-                    playerId: currentTurnPlayerId,
-                    association: '',
-                    gameState: game.getGameState()
-                  });
-                  
-                  // Przejdź do następnego gracza
-                  const nextPlayerId = game.nextTurn();
-                  if (nextPlayerId) {
-                    game.turnStartTime = Date.now();
-                    game.turnTimeLeft = 30;
-                    
-                    // Wyślij początkowy czas dla nowego gracza
-                    io.to(gameCode).emit('turnTimerUpdate', {
-                      timeLeft: game.turnTimeLeft,
-                      gameState: game.getGameState()
-                    });
-                    
-                    io.to(gameCode).emit('nextTurn', {
-                      nextPlayerId: nextPlayerId,
-                      gameState: game.getGameState()
-                    });
-                  } else {
-                    setTimeout(() => {
-                      game.startDecisionPhase();
-                      io.to(gameCode).emit('decisionPhaseStarted', {
-                        gameState: game.getGameState()
-                      });
-                    }, 1500);
-                  }
-                }
-              }
-            } else {
-              // Brak gracza w kolejce, zatrzymaj timer
-              clearInterval(game.turnTimerBroadcastInterval);
-              game.turnTimerBroadcastInterval = null;
-            }
-          } else {
-            clearInterval(game.turnTimerBroadcastInterval);
-            game.turnTimerBroadcastInterval = null;
-          }
-        }, 1000);
-      }
+      game.startTurnTimerForCurrentPlayer(gameCode, io);
     }
     
     io.to(gameCode).emit('gameStarted', {
@@ -1058,92 +1641,8 @@ io.on('connection', (socket) => {
     if (game.gameMode === 'sequential') {
       const nextPlayerId = game.nextTurn();
       if (nextPlayerId) {
-        // Zatrzymaj poprzedni timer
-        if (game.turnTimerBroadcastInterval) {
-          clearInterval(game.turnTimerBroadcastInterval);
-          game.turnTimerBroadcastInterval = null;
-        }
-        
-        // Uruchom nowy timer dla następnego gracza
-        game.turnStartTime = Date.now();
-        game.turnTimeLeft = 30;
-        
-        // Wyślij początkowy czas
-        io.to(gameCode).emit('turnTimerUpdate', {
-          timeLeft: game.turnTimeLeft,
-          gameState: game.getGameState()
-        });
-        
-        // ✅ NAPRAWIONE: Zatrzymaj poprzedni timer przed uruchomieniem nowego
-        if (game.turnTimerBroadcastInterval) {
-          clearInterval(game.turnTimerBroadcastInterval);
-          game.turnTimerBroadcastInterval = null;
-        }
-        
-        // Rozpocznij broadcast timera dla nowego gracza
-        game.turnTimerBroadcastInterval = setInterval(() => {
-          if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
-            const currentTurnPlayerId = game.getCurrentTurnPlayerId();
-            // ✅ NAPRAWIONE: Sprawdzaj aktualnego gracza
-            if (currentTurnPlayerId === nextPlayerId) {
-              const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
-              game.turnTimeLeft = Math.max(0, 30 - elapsed);
-              
-              io.to(gameCode).emit('turnTimerUpdate', {
-                timeLeft: game.turnTimeLeft,
-                gameState: game.getGameState()
-              });
-              
-              // Jeśli czas się skończył, automatycznie przejdź dalej
-              if (game.turnTimeLeft <= 0) {
-                clearInterval(game.turnTimerBroadcastInterval);
-                game.turnTimerBroadcastInterval = null;
-                
-                const currentPlayer = game.players.get(nextPlayerId);
-                if (currentPlayer && !currentPlayer.hasSubmitted) {
-                  game.submitAssociation(nextPlayerId, '');
-                  io.to(gameCode).emit('associationSubmitted', {
-                    playerId: nextPlayerId,
-                    association: '',
-                    gameState: game.getGameState()
-                  });
-                  
-                  // Przejdź do następnego gracza
-                  const nextNextPlayerId = game.nextTurn();
-                  if (nextNextPlayerId) {
-                    game.turnStartTime = Date.now();
-                    game.turnTimeLeft = 30;
-                    
-                    // Wyślij początkowy czas dla nowego gracza
-                    io.to(gameCode).emit('turnTimerUpdate', {
-                      timeLeft: game.turnTimeLeft,
-                      gameState: game.getGameState()
-                    });
-                    
-                    io.to(gameCode).emit('nextTurn', {
-                      nextPlayerId: nextNextPlayerId,
-                      gameState: game.getGameState()
-                    });
-                  } else {
-                    setTimeout(() => {
-                      game.startDecisionPhase();
-                      io.to(gameCode).emit('decisionPhaseStarted', {
-                        gameState: game.getGameState()
-                      });
-                    }, 1500);
-                  }
-                }
-              }
-            } else {
-              // Gracz się zmienił, zatrzymaj timer
-              clearInterval(game.turnTimerBroadcastInterval);
-              game.turnTimerBroadcastInterval = null;
-            }
-          } else {
-            clearInterval(game.turnTimerBroadcastInterval);
-            game.turnTimerBroadcastInterval = null;
-          }
-        }, 1000);
+        // ✅ NAPRAWIONE: Użyj nowej funkcji do uruchomienia timera
+        game.startTurnTimerForCurrentPlayer(gameCode, io);
         
         io.to(gameCode).emit('nextTurn', {
           nextPlayerId: nextPlayerId,
@@ -1211,12 +1710,16 @@ io.on('connection', (socket) => {
           gameState: game.getGameState()
         });
         
+        // ✅ NAPRAWIONE: Zatrzymaj wszystkie timery
+        game.stopAllTimers();
+        
+        // ✅ NAPRAWIONE: Pokaż ekran końcowy od razu, bez czekania
         setTimeout(() => {
           io.to(gameCode).emit('gameEnded', {
             reason: 'wordGuessed',
             gameState: game.getGameState()
           });
-        }, 3000);
+        }, 1000);
       } else {
         io.to(gameCode).emit('guessFailed', {
           guesserId: result.guesserId,
@@ -1225,12 +1728,16 @@ io.on('connection', (socket) => {
           gameState: game.getGameState()
         });
         
+        // ✅ NAPRAWIONE: Zatrzymaj wszystkie timery
+        game.stopAllTimers();
+        
+        // ✅ NAPRAWIONE: Pokaż ekran końcowy od razu
         setTimeout(() => {
           io.to(gameCode).emit('gameEnded', {
             reason: 'guessFailed',
             gameState: game.getGameState()
           });
-        }, 3000);
+        }, 1000);
       }
     }
   });
@@ -1353,88 +1860,7 @@ io.on('connection', (socket) => {
     
     // ✅ NAPRAWIONE: Uruchom timer dla pierwszego gracza w trybie sequential po nowej rundzie
     if (game.gameMode === 'sequential' && game.isPlaying) {
-      const firstPlayerId = game.getCurrentTurnPlayerId();
-      if (firstPlayerId) {
-        // ✅ NAPRAWIONE: Zresetuj timer przed uruchomieniem nowego
-        if (game.turnTimerBroadcastInterval) {
-          clearInterval(game.turnTimerBroadcastInterval);
-          game.turnTimerBroadcastInterval = null;
-        }
-        
-        game.turnStartTime = Date.now();
-        game.turnTimeLeft = 30;
-        
-        // Wyślij początkowy czas natychmiast
-        io.to(gameCode).emit('turnTimerUpdate', {
-          timeLeft: game.turnTimeLeft,
-          gameState: gameState
-        });
-        
-        // Rozpocznij broadcast timera
-        game.turnTimerBroadcastInterval = setInterval(() => {
-          if (game.isPlaying && !game.wordGuessed && !game.guessFailed && game.gameMode === 'sequential') {
-            const currentTurnPlayerId = game.getCurrentTurnPlayerId();
-            // ✅ NAPRAWIONE: Sprawdzaj aktualnego gracza, nie tylko pierwszego
-            if (currentTurnPlayerId) {
-              const elapsed = Math.floor((Date.now() - game.turnStartTime) / 1000);
-              game.turnTimeLeft = Math.max(0, 30 - elapsed);
-              
-              io.to(gameCode).emit('turnTimerUpdate', {
-                timeLeft: game.turnTimeLeft,
-                gameState: game.getGameState()
-              });
-              
-              // Jeśli czas się skończył, automatycznie przejdź dalej
-              if (game.turnTimeLeft <= 0) {
-                clearInterval(game.turnTimerBroadcastInterval);
-                game.turnTimerBroadcastInterval = null;
-                
-                const currentPlayer = game.players.get(currentTurnPlayerId);
-                if (currentPlayer && !currentPlayer.hasSubmitted) {
-                  game.submitAssociation(currentTurnPlayerId, '');
-                  io.to(gameCode).emit('associationSubmitted', {
-                    playerId: currentTurnPlayerId,
-                    association: '',
-                    gameState: game.getGameState()
-                  });
-                  
-                  // Przejdź do następnego gracza
-                  const nextPlayerId = game.nextTurn();
-                  if (nextPlayerId) {
-                    game.turnStartTime = Date.now();
-                    game.turnTimeLeft = 30;
-                    
-                    // Wyślij początkowy czas dla nowego gracza
-                    io.to(gameCode).emit('turnTimerUpdate', {
-                      timeLeft: game.turnTimeLeft,
-                      gameState: game.getGameState()
-                    });
-                    
-                    io.to(gameCode).emit('nextTurn', {
-                      nextPlayerId: nextPlayerId,
-                      gameState: game.getGameState()
-                    });
-                  } else {
-                    setTimeout(() => {
-                      game.startDecisionPhase();
-                      io.to(gameCode).emit('decisionPhaseStarted', {
-                        gameState: game.getGameState()
-                      });
-                    }, 1500);
-                  }
-                }
-              }
-            } else {
-              // Brak gracza w kolejce, zatrzymaj timer
-              clearInterval(game.turnTimerBroadcastInterval);
-              game.turnTimerBroadcastInterval = null;
-            }
-          } else {
-            clearInterval(game.turnTimerBroadcastInterval);
-            game.turnTimerBroadcastInterval = null;
-          }
-        }, 1000);
-      }
+      game.startTurnTimerForCurrentPlayer(gameCode, io);
     }
     
     io.to(gameCode).emit('nextRoundStarted', {
