@@ -1,1 +1,254 @@
-
+[
+    {
+        "word": "KOT",
+        "hint": "Zwierzę domowe"
+    },
+    {
+        "word": "SAMOCHÓD",
+        "hint": "Środek transportu"
+    },
+    {
+        "word": "KSIĄŻKA",
+        "hint": "Źródło wiedzy"
+    },
+    {
+        "word": "TELEFON",
+        "hint": "Urządzenie do komunikacji"
+    },
+    {
+        "word": "OKNO",
+        "hint": "Element budynku"
+    },
+    {
+        "word": "DRZEWO",
+        "hint": "Roślina"
+    },
+    {
+        "word": "SŁOŃCE",
+        "hint": "Gwiazda"
+    },
+    {
+        "word": "WODA",
+        "hint": "Płyn"
+    },
+    {
+        "word": "OGIEŃ",
+        "hint": "Żywioł"
+    },
+    {
+        "word": "ZAMEK",
+        "hint": "Budowla"
+    },
+    {
+        "word": "PIES",
+        "hint": "Przyjaciel człowieka"
+    },
+    {
+        "word": "MIASTO",
+        "hint": "Duża osada"
+    },
+    {
+        "word": "RZEKA",
+        "hint": "Płynąca woda"
+    },
+    {
+        "word": "GÓRY",
+        "hint": "Wysokie tereny"
+    },
+    {
+        "word": "MORZE",
+        "hint": "Duża woda"
+    },
+    {
+        "word": "LAS",
+        "hint": "Wiele drzew"
+    },
+    {
+        "word": "SZKŁO",
+        "hint": "Przezroczysty materiał"
+    },
+    {
+        "word": "PAPIER",
+        "hint": "Do pisania"
+    },
+    {
+        "word": "STÓŁ",
+        "hint": "Meble"
+    },
+    {
+        "word": "KRZESŁO",
+        "hint": "Do siedzenia"
+    },
+    {
+        "word": "OGRODNIK",
+        "hint": "Zawód"
+    },
+    {
+        "word": "KWIAT",
+        "hint": "Roślina ozdobna"
+    },
+    {
+        "word": "SAMOLOT",
+        "hint": "Środek transportu powietrznego"
+    },
+    {
+        "word": "ROWER",
+        "hint": "Pojazd dwukołowy"
+    },
+    {
+        "word": "KOMPUTER",
+        "hint": "Urządzenie elektroniczne"
+    },
+    {
+        "word": "LAMPKA",
+        "hint": "Źródło światła"
+    },
+    {
+        "word": "KALENDARZ",
+        "hint": "System pomiaru czasu"
+    },
+    {
+        "word": "TELEWIZOR",
+        "hint": "Urządzenie do oglądania programów"
+    },
+    {
+        "word": "FOTEL",
+        "hint": "Mebel do siedzenia"
+    },
+    {
+        "word": "PARASOL",
+        "hint": "Ochrona przed deszczem"
+    },
+    {
+        "word": "ZEGAR",
+        "hint": "Pokazuje czas"
+    },
+    {
+        "word": "KAPELUSZ",
+        "hint": "Nakrycie głowy"
+    },
+    {
+        "word": "BUTY",
+        "hint": "Obuwie"
+    },
+    {
+        "word": "PLECAK",
+        "hint": "Torba na plecach"
+    },
+    {
+        "word": "OKULARY",
+        "hint": "Do patrzenia"
+    },
+    {
+        "word": "DŁUGOPIS",
+        "hint": "Narzędzie do pisania"
+    },
+    {
+        "word": "NOTATNIK",
+        "hint": "Zeszyt"
+    },
+    {
+        "word": "LUSTRO",
+        "hint": "Odbija obraz"
+    },
+    {
+        "word": "WISZĄCY",
+        "hint": "Zawieszenie"
+    },
+    {
+        "word": "ŚWIATŁO",
+        "hint": "Oświetlenie"
+    },
+    {
+        "word": "GITARA",
+        "hint": "Instrument muzyczny"
+    },
+    {
+        "word": "PIANINO",
+        "hint": "Duży instrument"
+    },
+    {
+        "word": "KAMERA",
+        "hint": "Nagrywa obrazy"
+    },
+    {
+        "word": "DYWAN",
+        "hint": "Wykładzina podłogowa"
+    },
+    {
+        "word": "KOC",
+        "hint": "Do przykrycia"
+    },
+    {
+        "word": "PODUSZKA",
+        "hint": "Do spania"
+    },
+    {
+        "word": "ŁÓŻKO",
+        "hint": "Mebel do spania"
+    },
+    {
+        "word": "SZAFKA",
+        "hint": "Mebel na rzeczy"
+    },
+    {
+        "word": "LODÓWKA",
+        "hint": "Chłodzi jedzenie"
+    },
+    {
+        "word": "PIEKARNIK",
+        "hint": "Pieczenie"
+    },
+    {
+        "word": "ZLEW",
+        "hint": "Mycie naczyń"
+    },
+    {
+        "word": "SZTUĆCE",
+        "hint": "Przyrządy do jedzenia"
+    },
+    {
+        "word": "TALERZ",
+        "hint": "Naczynie na jedzenie"
+    },
+    {
+        "word": "KUBEK",
+        "hint": "Do picia"
+    },
+    {
+        "word": "CZAPKA",
+        "hint": "Nakrycie głowy"
+    },
+    {
+        "word": "SZALIK",
+        "hint": "Owijanie szyi"
+    },
+    {
+        "word": "RĘKAWICZKI",
+        "hint": "Na dłonie"
+    },
+    {
+        "word": "KURTKA",
+        "hint": "Odzież wierzchnia"
+    },
+    {
+        "word": "SPODNIE",
+        "hint": "Odzież na nogi"
+    },
+    {
+        "word": "KOSZULA",
+        "hint": "Odzież górna"
+    },
+    {
+        "word": "SKARPETKI",
+        "hint": "Na stopy"
+    },
+    {
+        "word": "SZNURÓWKI",
+        "hint": "Do wiązania"
+    },
+    {
+        "word": "SUKIENKA",
+        "hint": "Odzież damska"
+    }
+]
