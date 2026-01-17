@@ -24,6 +24,9 @@ const wordPairs = require('./data/words.json');
 // Przechowywanie gier
 const games = new Map();
 
+// Przechowywanie wiadomości czatu globalnego
+const globalMessages = [];
+
 // Hasło administratora (powinno być w zmiennych środowiskowych)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'jasiu23#';
 
@@ -1448,6 +1451,31 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Obsługa czatu globalnego
+  socket.on('sendGlobalMessage', (data) => {
+    const { playerName, message } = data;
+    const sanitizedNome = sanitizeInput(playerName) || 'Anonim';
+    const sanitizedMessage = sanitizeInput(message);
+
+    if (!sanitizedMessage) return;
+
+    const globalMessage = {
+      id: Date.now(),
+      playerName: sanitizedNome,
+      message: sanitizedMessage,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    globalMessages.push(globalMessage);
+    if (globalMessages.length > 100) globalMessages.shift(); // Limit 100 wiadomości
+
+    io.emit('newGlobalMessage', globalMessage);
+  });
+
+  socket.on('getGlobalChatHistory', () => {
+    socket.emit('globalChatHistory', globalMessages);
+  });
+
   socket.on('disconnect', () => {
     const gameCode = socket.gameCode;
     if (!gameCode || !games.has(gameCode)) {
@@ -1530,4 +1558,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Serwer działa na porcie ${PORT}`);
 });
+
 
