@@ -483,7 +483,7 @@ function updateGamePlayersList() {
     playersCount.textContent = gameState.players.length;
 
     gameState.players.forEach(player => {
-        // NIE pokazuj impostora na czerwono innym graczom (tylko jeśli gra się zakończyła)
+        // Pokazuj impostora na czerwono jeśli gra się zakończyła
         const showImpostor = player.isImpostor &&
             (gameState.wordGuessed || gameState.guessFailed || gameState.gameEnded || gameState.isVoting || player.id === socket.id);
 
@@ -997,51 +997,75 @@ function loadVoteOptions() {
 
     if (!gameState || !gameState.players) return;
 
+    const myPlayer = gameState.players.find(p => p.id === socket.id);
+    const hasVoted = myPlayer && myPlayer.voteSubmitted;
+
     gameState.players.forEach(player => {
         const voteBtn = document.createElement('button');
         voteBtn.className = 'vote-btn';
         voteBtn.textContent = player.name;
         voteBtn.dataset.playerId = player.id;
 
-        voteBtn.addEventListener('click', () => {
-            document.querySelectorAll('.vote-btn').forEach(btn => {
-                btn.classList.remove('selected');
-            });
-            voteBtn.classList.add('selected');
-
-            if (!document.getElementById('submit-vote-btn')) {
-                const submitVoteBtn = document.createElement('button');
-                submitVoteBtn.id = 'submit-vote-btn';
-                submitVoteBtn.className = 'btn btn-primary';
-                submitVoteBtn.innerHTML = '<i class="fas fa-vote-yea"></i> Zagłosuj';
-                submitVoteBtn.style.marginTop = '25px';
-                submitVoteBtn.style.width = '100%';
-                submitVoteBtn.style.padding = '18px';
-                submitVoteBtn.style.fontSize = '1.3rem';
-
-                submitVoteBtn.addEventListener('click', () => {
-                    const selectedVoteBtn = document.querySelector('.vote-btn.selected');
-                    if (!selectedVoteBtn) {
-                        showNotification('Wybierz gracza, na którego chcesz zagłosować!', 'error');
-                        return;
-                    }
-
-                    const votedPlayerId = selectedVoteBtn.dataset.playerId;
-                    socket.emit('submitVote', { votedPlayerId });
-
-                    submitVoteBtn.disabled = true;
-                    submitVoteBtn.textContent = 'Głos oddany ✓';
-                    document.getElementById('voted-message').style.display = 'flex';
-                });
-
-                voteOptions.appendChild(submitVoteBtn);
+        if (hasVoted) {
+            voteBtn.disabled = true;
+            if (gameState.votes && gameState.votes.find(v => v[0] === socket.id && v[1] === player.id)) {
+                voteBtn.classList.add('selected');
             }
+        } else {
+            voteBtn.addEventListener('click', () => {
+                document.querySelectorAll('.vote-btn').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                voteBtn.classList.add('selected');
 
-            document.getElementById('submit-vote-btn').disabled = false;
-        });
+                let submitVoteBtn = document.getElementById('submit-vote-btn');
+                if (!submitVoteBtn) {
+                    submitVoteBtn = document.createElement('button');
+                    submitVoteBtn.id = 'submit-vote-btn';
+                    submitVoteBtn.className = 'btn btn-primary';
+                    submitVoteBtn.innerHTML = '<i class="fas fa-vote-yea"></i> Zagłosuj';
+                    submitVoteBtn.style.marginTop = '25px';
+                    submitVoteBtn.style.width = '100%';
+                    submitVoteBtn.style.padding = '18px';
+                    submitVoteBtn.style.fontSize = '1.3rem';
+
+                    submitVoteBtn.addEventListener('click', () => {
+                        const selectedVoteBtn = document.querySelector('.vote-btn.selected');
+                        if (!selectedVoteBtn) {
+                            showNotification('Wybierz gracza, na którego chcesz zagłosować!', 'error');
+                            return;
+                        }
+
+                        const votedPlayerId = selectedVoteBtn.dataset.playerId;
+                        socket.emit('submitVote', { votedPlayerId });
+
+                        // Blokada przycisków
+                        submitVoteBtn.disabled = true;
+                        submitVoteBtn.textContent = 'Głos oddany ✓';
+                        document.querySelectorAll('.vote-btn').forEach(btn => btn.disabled = true);
+
+                        document.getElementById('voted-message').style.display = 'flex';
+                    });
+
+                    voteOptions.appendChild(submitVoteBtn);
+                }
+
+                if (!hasVoted) {
+                    document.getElementById('submit-vote-btn').disabled = false;
+                }
+            });
+        }
 
         voteOptions.appendChild(voteBtn);
     });
+
+    if (hasVoted) {
+        const msg = document.createElement('div');
+        msg.className = 'success-message';
+        msg.style.display = 'flex';
+        msg.innerHTML = '<i class="fas fa-check-circle"></i> Twój głos został oddany!';
+        voteOptions.appendChild(msg);
+    }
 }
 
 function showVoteResults(results, outcome) {
@@ -1202,6 +1226,13 @@ function startNextRound() {
     document.getElementById('submit-guess-btn').style.display = 'flex';
 
     updateGameInterface();
+
+    // Wymuś pokazanie sekcji tury dla trybu sequential jeśli to nie moja kolej
+    // (updateGameInterface może ją ukryć, a timer mógł już przyjść z serwera)
+    if (gameState.gameMode === 'sequential' && gameState.isPlaying) {
+        const turnSection = document.getElementById('turn-section');
+        if (turnSection) turnSection.style.display = 'block';
+    }
 
     // Dodaj wiadomość o nowej rundzie do czatu
     addChatMessage({
@@ -1794,6 +1825,74 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('round-time').addEventListener('change', function () {
         roundTime = parseInt(this.value);
     });
+
+    // Obsługa czatu globalnego
+    const globalChatInput = document.getElementById('global-chat-input');
+    const globalChatSendBtn = document.getElementById('global-chat-send-btn');
+    const globalChatNick = document.getElementById('global-chat-nick');
+
+    // Załaduj historię po połączeniu
+    if (socket) {
+        socket.emit('getGlobalChatHistory');
+    }
+
+    socket.on('globalChatHistory', (messages) => {
+        const chatContainer = document.getElementById('global-chat-messages');
+        if (!chatContainer) return;
+        chatContainer.innerHTML = '';
+        messages.forEach(msg => addGlobalChatMessage(msg));
+    });
+
+    socket.on('newGlobalMessage', (msg) => {
+        addGlobalChatMessage(msg);
+    });
+
+    function addGlobalChatMessage(msg) {
+        const chatContainer = document.getElementById('global-chat-messages');
+        if (!chatContainer) return;
+
+        const div = document.createElement('div');
+        div.className = 'chat-message';
+        div.style.marginBottom = '8px';
+        div.style.background = 'rgba(255, 255, 255, 0.05)';
+        div.style.padding = '8px';
+        div.style.borderRadius = '5px';
+
+        div.innerHTML = `
+            <div class="message-header" style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px;">
+                <span class="message-player" style="color: #00ffcc; font-weight: bold;">${msg.playerName}</span>
+                <span class="message-time" style="color: #aaa;">${msg.timestamp}</span>
+            </div>
+            <div class="message-text" style="color: #fff;">${msg.message}</div>
+        `;
+        chatContainer.appendChild(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function sendGlobalMessage() {
+        const message = globalChatInput.value.trim();
+        let nick = globalChatNick.value.trim();
+
+        if (!message) return;
+        if (!nick) nick = 'Gość';
+
+        socket.emit('sendGlobalMessage', {
+            playerName: nick,
+            message: message
+        });
+
+        globalChatInput.value = '';
+    }
+
+    if (globalChatSendBtn) {
+        globalChatSendBtn.addEventListener('click', sendGlobalMessage);
+    }
+
+    if (globalChatInput) {
+        globalChatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendGlobalMessage();
+        });
+    }
 });
 
 
